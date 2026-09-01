@@ -104,3 +104,5 @@
 2026-09-01 09:47:20 - mediminder - INFO - [430b9bba] <<< HTTP 200 GET /api/iot-sync-status (0.4ms)
 2026-09-01 09:47:25 - mediminder - INFO - [f7df2378] >>> GET /api/iot-sync-status from 127.0.0.1
 2026-09-01 09:47:25 - mediminder - INFO - [f7df2378] <<< HTTP 200 GET /api/iot-sync-status (0.1ms)
+2026-09-01 09:47:30 - mediminder - INFO - [b11f95a8] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:30 - mediminder - INFO - [b11f95a8] <<< HTTP 200 GET /api/iot-sync-status (0.2ms)
