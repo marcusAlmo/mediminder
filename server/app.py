@@ -13,6 +13,42 @@ from flask_cors import CORS
 import json
 import re
 import os
+import logging
+import logging.handlers
+import time
+import uuid
+
+# ==========================================
+# Persistent Logging Configuration
+# ==========================================
+LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+app_logger = logging.getLogger("mediminder")
+app_logger.setLevel(logging.DEBUG)
+
+# File handler with rotation (10 MB, keep 5 backups)
+file_handler = logging.handlers.RotatingFileHandler(
+    os.path.join(LOGS_DIR, "mediminder.log"),
+    maxBytes=10485760,
+    backupCount=5,
+    encoding="utf-8"
+)
+file_handler.setLevel(logging.DEBUG)
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+app_logger.addHandler(file_handler)
+app_logger.addHandler(console_handler)
 
 app = Flask(__name__)
 
@@ -108,7 +144,7 @@ def load_data() -> Dict[str, Any]:
                 data = json.load(f)
             return data
         except (json.JSONDecodeError, IOError, PermissionError) as e:
-            print(f"[DATA] Could not read {DATA_FILE}: {e}. Using defaults.")
+            app_logger.error(f"Could not read {DATA_FILE}: {e}. Using defaults.")
     return {}
 
 
@@ -126,7 +162,7 @@ def save_data() -> None:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         os.replace(temp_file, DATA_FILE)
     except IOError as e:
-        print(f"[DATA] Could not save {DATA_FILE}: {e}")
+        app_logger.error(f"Could not save {DATA_FILE}: {e}")
 
 
 def migrate_default_data(data: Dict[str, Any]) -> None:
@@ -202,23 +238,37 @@ def set_security_headers(response):
 # Comprehensive Activity & Debug Logging Hooks
 # ==========================================
 
+def get_request_id():
+    """Return the current request ID (generated at request start)."""
+    return getattr(request, "_request_id", "none")
+
+
 @app.before_request
 def log_incoming_request():
-    """Log all incoming HTTP requests with timestamp, client IP, method, and endpoint."""
+    """Log all incoming HTTP requests with request ID, client IP, method, and endpoint."""
     if request.path.startswith("/static"):
-        return  # Skip static asset noise
-    now_str = datetime.now(PHT).strftime("%Y-%m-%d %H:%M:%S PHT")
-    print(f"\n\033[1;35m>>> [INCOMING HTTP {request.method}]\033[0m {request.path} from {request.remote_addr} at {now_str}")
-    if request.is_json and request.get_json(silent=True):
-        print(f"    Payload: {request.get_json(silent=True)}")
+        return
+    request._request_id = str(uuid.uuid4())[:8]
+    request._start_time = time.time()
+    payload = request.get_json(silent=True) if request.is_json else None
+    app_logger.info(
+        f"[{get_request_id()}] >>> {request.method} {request.path} from {request.remote_addr}"
+    )
+    if payload:
+        app_logger.debug(f"[{get_request_id()}] Payload: {json.dumps(payload)}")
 
 
 @app.after_request
 def log_outgoing_response(response):
-    """Log response status code and execution summary."""
+    """Log response status code, duration, and request ID."""
     if not request.path.startswith("/static"):
-        status_color = "\033[1;32m" if response.status_code < 400 else "\033[1;31m"
-        print(f"\033[1;30m<<< [HTTP RESPONSE {status_color}{response.status_code}\033[1;30m]\033[0m {request.method} {request.path} completed.")
+        request_id = get_request_id()
+        duration = (time.time() - request._start_time) * 1000 if hasattr(request, "_start_time") else 0
+        level = logging.INFO if response.status_code < 400 else logging.WARNING
+        app_logger.log(
+            level,
+            f"[{request_id}] <<< HTTP {response.status_code} {request.method} {request.path} ({duration:.1f}ms)"
+        )
     return response
 
 
@@ -275,15 +325,15 @@ def get_dispense_schedule():
         "current_time": rtc_time,
     }
 
-    # Print log of data served for GET request to terminal
-    print(f"  \033[1;36m[DATA SERVED TO CLIENT / ESP32]\033[0m")
-    print(f"  • Patient Name       : {response_data['patient_name']}")
-    print(f"  • Total Racks        : 7 racks (Default)")
-    print(f"  • Active Next Rack   : Rack #{response_data['current_rack']} due at {response_data['next_rack_datetime']}")
-    print(f"  • Rotation Degree    : {response_data['rotation_degree']}°")
-    print(f"  • Storage Racks      : {response_data['rack_count']} available (threshold: {response_data['rack_warning_threshold']})")
-    print(f"  • Rack Warning Active: {'YES (LOW CAPACITY)' if response_data['rack_warning'] else 'NO (NORMAL)'}")
-    print(f"  • Current PHT Time   : {rtc_time['formatted']} (ISO: {rtc_time['iso']})")
+    request_id = get_request_id()
+    app_logger.info(f"[{request_id}] [DATA SERVED TO CLIENT / ESP32]")
+    app_logger.debug(f"[{request_id}] Patient: {response_data['patient_name']}")
+    app_logger.debug(f"[{request_id}] Active Next Rack: Rack #{response_data['current_rack']} due at {response_data['next_rack_datetime']}")
+    app_logger.debug(f"[{request_id}] Rotation Degree: {response_data['rotation_degree']}°")
+    app_logger.debug(f"[{request_id}] Storage Racks: {response_data['rack_count']} available (threshold: {response_data['rack_warning_threshold']})")
+    if response_data['rack_warning']:
+        app_logger.warning(f"[{request_id}] Rack Warning Active: YES (LOW CAPACITY)")
+    app_logger.debug(f"[{request_id}] Current PHT Time: {rtc_time['formatted']} (ISO: {rtc_time['iso']})")
 
     return jsonify(response_data), 200
 
@@ -381,17 +431,17 @@ def submit_dispensation():
     dispense_logs.append(log_entry)
     save_data()
 
-    # Detailed debug log
-    print(f"  \033[1;32m[ACTION: DISPENSATION RECORDED]\033[0m")
-    print(f"  • Event ID           : #{log_entry['id']}")
-    print(f"  • Timestamp (PHT)    : {log_entry['timestamp']}")
-    print(f"  • Patient Name       : {patient_name}")
-    print(f"  • Rack Dispensed     : Rack #{slot}")
-    print(f"  • Next Rack Due      : Rack #{dispenser_config.get('current_rack')}")
-    print(f"  • Stepper Rotation   : {rotation_degree}°")
-    print(f"  • Racks Remaining    : {rack_count} available")
+    request_id = get_request_id()
+    app_logger.info(f"[{request_id}] [ACTION: DISPENSATION RECORDED]")
+    app_logger.debug(f"[{request_id}] Event ID: #{log_entry['id']}")
+    app_logger.debug(f"[{request_id}] Timestamp (PHT): {log_entry['timestamp']}")
+    app_logger.debug(f"[{request_id}] Patient: {patient_name}")
+    app_logger.debug(f"[{request_id}] Rack Dispensed: Rack #{slot}")
+    app_logger.debug(f"[{request_id}] Next Rack Due: Rack #{dispenser_config.get('current_rack')}")
+    app_logger.debug(f"[{request_id}] Stepper Rotation: {rotation_degree}°")
+    app_logger.debug(f"[{request_id}] Racks Remaining: {rack_count} available")
     if rack_warning:
-        print(f"  \033[1;33m[WARNING] Storage racks low (≤ {threshold})! Refill recommended.\033[0m")
+        app_logger.warning(f"[{request_id}] Storage racks low (≤ {threshold})! Refill recommended.")
 
     return jsonify({
         "status": "success",
@@ -454,13 +504,13 @@ def submit_intake():
     intake_logs.append(intake_entry)
     save_data()
 
-    # Detailed debug log
-    print(f"  \033[1;32m[ACTION: INTAKE CONFIRMED / DRAWER OPENED]\033[0m")
-    print(f"  • Intake ID          : #{intake_entry['id']}")
-    print(f"  • Timestamp (PHT)    : {intake_entry['timestamp']}")
-    print(f"  • Patient Name       : {patient_name}")
-    print(f"  • Rack Confirmed     : Rack #{slot}")
-    print(f"  • Notes              : {notes}")
+    request_id = get_request_id()
+    app_logger.info(f"[{request_id}] [ACTION: INTAKE CONFIRMED / DRAWER OPENED]")
+    app_logger.debug(f"[{request_id}] Intake ID: #{intake_entry['id']}")
+    app_logger.debug(f"[{request_id}] Timestamp (PHT): {intake_entry['timestamp']}")
+    app_logger.debug(f"[{request_id}] Patient: {patient_name}")
+    app_logger.debug(f"[{request_id}] Rack Confirmed: Rack #{slot}")
+    app_logger.debug(f"[{request_id}] Notes: {notes}")
 
     return jsonify({
         "status": "success",
@@ -587,14 +637,14 @@ def update_dispense_schedule():
     # Persist updated configuration to text file
     save_data()
 
-    # Print log of updated configuration to server terminal
-    print(f"\n\033[1;32m[POST /api/dispense-schedule]\033[0m 7-Rack Schedule updated via Save & Sync:")
-    print(f"  • Patient Name       : {dispenser_config['patient_name']}")
-    print(f"  • Active Next Rack   : Rack #{dispenser_config.get('current_rack')}")
-    print(f"  • Rotation Degree    : {dispenser_config['rotation_degree']}°")
-    print(f"  • Pending Racks      : {dispenser_config['rack_count']} available")
+    request_id = get_request_id()
+    app_logger.info(f"[{request_id}] [POST /api/dispense-schedule] 7-Rack Schedule updated via Save & Sync")
+    app_logger.debug(f"[{request_id}] Patient Name: {dispenser_config['patient_name']}")
+    app_logger.debug(f"[{request_id}] Active Next Rack: Rack #{dispenser_config.get('current_rack')}")
+    app_logger.debug(f"[{request_id}] Rotation Degree: {dispenser_config['rotation_degree']}°")
+    app_logger.debug(f"[{request_id}] Pending Racks: {dispenser_config['rack_count']} available")
     for r in dispenser_config.get("racks", []):
-        print(f"    - Rack #{r['rack_id']}: {r['datetime']} [{r['status'].upper()}]")
+        app_logger.debug(f"[{request_id}]   - Rack #{r['rack_id']}: {r['datetime']} [{r['status'].upper()}]")
 
     return jsonify({
         "status": "success",
@@ -668,27 +718,38 @@ def dashboard():
     return render_template("dashboard.html")
 
 
+@app.errorhandler(Exception)
+def handle_unhandled_exception(error):
+    """Log all unhandled exceptions with request ID and stack trace."""
+    request_id = get_request_id()
+    app_logger.error(f"[{request_id}] Unhandled exception: {error}", exc_info=True)
+    return jsonify({
+        "status": "error",
+        "message": "Internal server error",
+        "request_id": request_id
+    }), 500
+
+
 if __name__ == "__main__":
-    print("\n" + "="*70)
-    print("  MEDIMINDER by SJNHS - Smart Medicine Dispenser API Server")
-    print("="*70)
-    print("\nStarting Flask Server on port 5000...")
-    print("\nAPI Endpoints:")
-    print("  GET  /api/dispense          - Fetch 7-rack schedule, active rack & full PHT RTC timestamp")
-    print("  POST /api/dispense-log      - Submit successful dispense event (advances sequence pointer)")
-    print("  POST /api/intake            - Submit patient intake / drawer-open event")
-    print("  POST /api/dispense-schedule - Update 7-rack date & time schedule")
-    print("  GET  /api/dispense-logs     - View dispensation history")
-    print("  GET  /api/intake-logs       - View patient intake history")
-    print("  GET  /api/status            - Health check & system status")
-    print("  GET  /                      - Landing Page (hero, features, rationale)")
-    print("  GET  /dashboard             - Web Dashboard UI")
-    print("\nSecurity Features:")
-    print("  ✓ Input validation and sanitization")
-    print("  ✓ Rate limiting (placeholder - implement in production)")
-    print("  ✓ CORS configuration")
-    print("  ✓ Datetime format validation")
-    print("\n" + "="*70 + "\n")
+    app_logger.info("="*70)
+    app_logger.info("  MEDIMINDER by SJNHS - Smart Medicine Dispenser API Server")
+    app_logger.info("="*70)
+    app_logger.info("Starting Flask Server on port 5000...")
+    app_logger.info("API Endpoints:")
+    app_logger.info("  GET  /api/dispense          - Fetch 7-rack schedule, active rack & full PHT RTC timestamp")
+    app_logger.info("  POST /api/dispense-log      - Submit successful dispense event (advances sequence pointer)")
+    app_logger.info("  POST /api/intake            - Submit patient intake / drawer-open event")
+    app_logger.info("  POST /api/dispense-schedule - Update 7-rack date & time schedule")
+    app_logger.info("  GET  /api/dispense-logs     - View dispensation history")
+    app_logger.info("  GET  /api/intake-logs       - View patient intake history")
+    app_logger.info("  GET  /api/status            - Health check & system status")
+    app_logger.info("  GET  /                      - Landing Page (hero, features, rationale)")
+    app_logger.info("  GET  /dashboard             - Web Dashboard UI")
+    app_logger.info("Security Features:")
+    app_logger.info("  ✓ Input validation and sanitization")
+    app_logger.info("  ✓ Rate limiting (placeholder - implement in production)")
+    app_logger.info("  ✓ CORS configuration")
+    app_logger.info("  ✓ Datetime format validation")
     
     # Security: In production, set debug=False and use a production WSGI server
     port = int(os.environ.get("PORT", 5000))

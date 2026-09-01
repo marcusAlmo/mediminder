@@ -67,6 +67,13 @@
 // LED Bulb Relay
 #define LED_RELAY_PIN    23
 
+// ============================================================================
+// DEBUG & PERFORMANCE MONITORING
+// ============================================================================
+#define DEBUG_MODE       false  // Set to true for verbose debug logs
+#define PERF_MONITORING  true   // Set to true to log operation timings
+#define HARDWARE_STATUS_INTERVAL_MS 60000UL  // Log hardware status every 60s
+
 // Servo Motor (Pill Cover Gate)
 #define SERVO_PIN        13
 
@@ -150,6 +157,7 @@ unsigned long lastClockTickMs   = 0;
 unsigned long lastLcdAltMs      = 0;
 unsigned long dispenseReadyMs   = 0;   // When STATE_MED_READY was entered
 unsigned long lastRepeatAlarmMs = 0;   // Last time re-alarm played in MED_READY
+unsigned long lastHardwareStatusMs = 0; // Last time hardware status was logged
 
 // State
 DispenserState state      = STATE_IDLE;
@@ -201,6 +209,38 @@ void logWarn(const char* tag, const char* msg) {
 void logError(const char* tag, const char* msg) {
   printTimestamp();
   serialPrintf(ANSI_BOLD ANSI_RED "[ERROR] " ANSI_RESET "[%-9s] %s\n", tag, msg);
+}
+
+void logDebug(const char* tag, const char* msg) {
+  if (DEBUG_MODE) {
+    printTimestamp();
+    serialPrintf(ANSI_BOLD ANSI_WHITE "[DEBUG] " ANSI_RESET "[%-9s] %s\n", tag, msg);
+  }
+}
+
+void logPerf(const char* tag, unsigned long startMs) {
+  if (PERF_MONITORING) {
+    unsigned long duration = millis() - startMs;
+    printTimestamp();
+    serialPrintf(ANSI_BOLD ANSI_BLUE "[PERF]  " ANSI_RESET "[%-9s] %lu ms\n", tag, duration);
+  }
+}
+
+void logHardwareStatus() {
+  #if defined(ESP32)
+  if (DEBUG_MODE) {
+    printTimestamp();
+    Serial.println(F(ANSI_BOLD ANSI_BLUE "=== HARDWARE STATUS ===" ANSI_RESET));
+    serialPrintf("  Free Heap    : %d bytes\n", ESP.getFreeHeap());
+    if (isWifiConnected) {
+      serialPrintf("  WiFi Signal  : %d dBm\n", WiFi.RSSI());
+    } else {
+      serialPrintf("  WiFi Signal  : N/A (offline)\n");
+    }
+    serialPrintf("  Uptime       : %lu seconds\n", millis() / 1000);
+    Serial.println();
+  }
+  #endif
 }
 
 // ============================================================================
@@ -320,6 +360,7 @@ void setCoils(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
 void releaseCoils() { setCoils(0,0,0,0); }
 
 void rotateDegrees(float deg, bool cw = true) {
+  unsigned long startMs = millis();
   int steps = max(1, (int)((deg / 360.0f) * STEPS_PER_360));
   printTimestamp();
   serialPrintf("  " ANSI_CYAN "[STEPPER]" ANSI_RESET " %.1f° %s → %d half-steps\n", deg, cw?"CW":"CCW", steps);
@@ -330,10 +371,12 @@ void rotateDegrees(float deg, bool cw = true) {
     delayMicroseconds(1200);
   }
   releaseCoils();
+  logPerf("STEPPER", startMs);
 }
 
 // --- Bit-bang Servo (no library) ---
 void servoWrite(int angle, int holdMs = 500) {
+  unsigned long startMs = millis();
   angle = constrain(angle, 0, 180);
   int pw = map(angle, 0, 180, 500, 2400);
   int cycles = max(15, holdMs / 20);
@@ -344,6 +387,7 @@ void servoWrite(int angle, int holdMs = 500) {
     digitalWrite(SERVO_PIN, HIGH); delayMicroseconds(pw);
     digitalWrite(SERVO_PIN, LOW);  delayMicroseconds(20000 - pw);
   }
+  logPerf("SERVO", startMs);
 }
 
 // --- Passive Buzzer (bit-bang tone) ---
@@ -382,13 +426,16 @@ float sonarFiltered() {
   if (r[0]>r[1]){float t=r[0];r[0]=r[1];r[1]=t;}
   if (r[1]>r[2]){float t=r[1];r[1]=r[2];r[2]=t;}
   if (r[0]>r[1]){float t=r[0];r[0]=r[1];r[1]=t;}
-  return r[1];
+  float result = r[1];
+  logDebug("SONAR", ("Filtered distance: " + String(result) + " cm").c_str());
+  return result;
 }
 
 // ============================================================================
 // 10. LCD HELPERS
 // ============================================================================
 void lcdPrint(const char* row0, const char* row1) {
+  logDebug("LCD", ("row0: " + String(row0) + " | row1: " + String(row1)).c_str());
   lcd.clear();
   lcd.setCursor(0, 0); lcd.print(row0);
   lcd.setCursor(0, 1); lcd.print(row1);
@@ -481,6 +528,7 @@ float extractJsonFloat(const String& chunk, const String& key, float defaultVal 
 // ============================================================================
 void pollScheduleFromApi() {
 #if defined(ESP32)
+  unsigned long startMs = millis();
   if (!isWifiConnected || WiFi.status() != WL_CONNECTED) {
     if (hasCachedConfig) {
       logWarn("API-GET", "WiFi disconnected. Using cached settings and data.");
@@ -610,6 +658,7 @@ void pollScheduleFromApi() {
     }
   }
   http.end();
+  logPerf("API-GET", startMs);
 #endif
 }
 
@@ -618,6 +667,7 @@ void pollScheduleFromApi() {
 // ============================================================================
 void postDispenseLog(int rackId) {
 #if defined(ESP32)
+  unsigned long startMs = millis();
   if (!isWifiConnected || WiFi.status() != WL_CONNECTED) {
     logWarn("API-POST", "Offline – dispense event not sent to server.");
     return;
@@ -664,6 +714,7 @@ void postDispenseLog(int rackId) {
     logError("API-POST", ("Failed. HTTP code: " + String(code)).c_str());
   }
   http.end();
+  logPerf("API-POST", startMs);
 #endif
 }
 
@@ -672,6 +723,7 @@ void postDispenseLog(int rackId) {
 // ============================================================================
 void postIntakeLog(int rackId, float drawerDistCm) {
 #if defined(ESP32)
+  unsigned long startMs = millis();
   if (!isWifiConnected || WiFi.status() != WL_CONNECTED) {
     logWarn("API-POST", "Offline – intake event not sent to server.");
     return;
@@ -697,6 +749,7 @@ void postIntakeLog(int rackId, float drawerDistCm) {
     logError("API-POST", ("Intake POST failed. HTTP code: " + String(code)).c_str());
   }
   http.end();
+  logPerf("API-POST", startMs);
 #endif
 }
 
@@ -731,6 +784,7 @@ void updateIdleDisplay() {
 // 15. DISPENSE CYCLE (Steps 3–7)
 // ============================================================================
 void runDispenseCycle(int rackId) {
+  unsigned long startMs = millis();
   state = STATE_DISPENSING;
   activeDispenseRack = (rackId >= 1 && rackId <= 7) ? rackId : cfg_currentRack;
 
@@ -964,6 +1018,9 @@ void setup() {
   buzzTone(392, 120); delay(40); buzzTone(523, 200);
   logOk("INIT", "Ready. Monitoring schedule.");
 
+  // Log initial hardware status
+  logHardwareStatus();
+
   // Prime LCD alternation timer so first display is immediate
   lastLcdAltMs = millis() - LCD_ALT_DISPLAY_MS;
 }
@@ -1011,6 +1068,12 @@ void loop() {
   // --- Steps 8-10: Med ready / drawer detection ---
   if (state == STATE_MED_READY) {
     handleMedReadyState();
+  }
+
+  // --- Periodic hardware status logging ---
+  if (now - lastHardwareStatusMs >= HARDWARE_STATUS_INTERVAL_MS) {
+    lastHardwareStatusMs = now;
+    logHardwareStatus();
   }
 
   delay(20); // Small yield

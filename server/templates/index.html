@@ -235,6 +235,51 @@
         let currentRacks = [];
         let activeCurrentRack = 1;
 
+        // Front-end logger with timestamp, levels, and debug mode
+        class Logger {
+            constructor(component) {
+                this.component = component;
+                this.enableDebug = localStorage.getItem('MEDIMINDER_DEBUG') === 'true';
+            }
+
+            _ts() {
+                return new Date().toISOString();
+            }
+
+            _fmt(level, tag, msg) {
+                return `[${this._ts()}] [${level}] [${this.component}:${tag}] ${msg}`;
+            }
+
+            debug(tag, msg) {
+                if (this.enableDebug) console.debug(this._fmt('DEBUG', tag, msg));
+            }
+
+            info(tag, msg) {
+                console.log(this._fmt('INFO', tag, msg));
+            }
+
+            warn(tag, msg) {
+                console.warn(this._fmt('WARN', tag, msg));
+            }
+
+            error(tag, msg) {
+                console.error(this._fmt('ERROR', tag, msg));
+            }
+
+            setDebug(enabled) {
+                this.enableDebug = !!enabled;
+                localStorage.setItem('MEDIMINDER_DEBUG', this.enableDebug.toString());
+                console.log(`MEDIMINDER_DEBUG is now ${this.enableDebug}`);
+            }
+        }
+
+        const logger = new Logger('FRONTEND');
+
+        // Expose debug toggle for browser console: setMediminderDebug(true)
+        window.setMediminderDebug = function(enabled) {
+            logger.setDebug(enabled);
+        };
+
         // Live RTC Clock in PHT
         function updateLiveClock() {
             const now = new Date();
@@ -247,6 +292,11 @@
         updateLiveClock();
 
         function showAlert(msg, isError = false) {
+            if (isError) {
+                logger.warn('UI', 'Alert displayed: ' + msg);
+            } else {
+                logger.info('UI', 'Alert displayed: ' + msg);
+            }
             const banner = document.getElementById('alert-banner');
             banner.textContent = msg;
             banner.className = `alert-banner ${isError ? 'error' : 'success'}`;
@@ -255,6 +305,7 @@
         }
 
         function setDegree(val) {
+            logger.info('FORM', `Set rotation degree to ${val}°`);
             document.getElementById('rotation-degree').value = val;
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.innerText.includes(val + '°'));
@@ -316,6 +367,7 @@
         }
 
         function setNextRack(rackId) {
+            logger.info('SCHEDULE', `Set next active rack to #${rackId}`);
             activeCurrentRack = rackId;
             let rack = currentRacks.find(r => r.rack_id === rackId);
             if (rack) rack.status = 'pending';
@@ -324,6 +376,7 @@
         }
 
         function updateRackDateTime(rackId, val) {
+            logger.info('SCHEDULE', `Updated Rack #${rackId} datetime to ${val.replace('T', ' ')}`);
             let rack = currentRacks.find(r => r.rack_id === rackId);
             if (!rack) {
                 rack = { rack_id: rackId, status: 'pending', notes: `Rack ${rackId}` };
@@ -335,6 +388,7 @@
         }
 
         function updateRackStatus(rackId, statusVal) {
+            logger.info('SCHEDULE', `Updated Rack #${rackId} status to ${statusVal}`);
             let rack = currentRacks.find(r => r.rack_id === rackId);
             if (rack) {
                 rack.status = statusVal;
@@ -348,6 +402,7 @@
         }
 
         function autoFillSchedule() {
+            logger.info('SCHEDULE', 'Auto-filling 7 rack schedule at 4-hour intervals');
             const now = new Date();
             for (let i = 1; i <= 7; i++) {
                 const d = new Date(now.getTime() + (i * 4 * 3600 * 1000));
@@ -368,6 +423,7 @@
         }
 
         function updatePreview() {
+            logger.debug('UI', `Updating preview for currentRack=${activeCurrentRack}`);
             const nextRack = currentRacks.find(r => r.rack_id === activeCurrentRack && r.status === 'pending') || currentRacks.find(r => r.status === 'pending');
             const pendingCount = currentRacks.filter(r => r.status === 'pending').length;
 
@@ -390,10 +446,15 @@
         }
 
         async function fetchCurrentConfig() {
+            logger.info('API', 'GET /api/dispense - fetching current config');
+            const start = performance.now();
             try {
                 const res = await fetch('/api/dispense');
                 const data = await res.json();
+                const duration = Math.round(performance.now() - start);
                 if (data.status === 'success') {
+                    logger.info('API', `GET /api/dispense completed in ${duration}ms`);
+                    logger.debug('API', `Config received: ${JSON.stringify(data)}`);
                     document.getElementById('patient-name').value = data.patient_name;
                     document.getElementById('rotation-degree').value = data.rotation_degree;
                     activeCurrentRack = data.current_rack || 1;
@@ -406,7 +467,8 @@
                     document.getElementById('preview-degree').innerText = data.rotation_degree + '°';
                 }
             } catch (err) {
-                console.error("Failed to load config:", err);
+                const duration = Math.round(performance.now() - start);
+                logger.error('API', `GET /api/dispense failed after ${duration}ms: ${err.message}`);
             }
         }
 
@@ -414,6 +476,19 @@
             e.preventDefault();
             const patientName = document.getElementById('patient-name').value.trim();
             const rotationDegree = parseFloat(document.getElementById('rotation-degree').value);
+
+            logger.info('FORM', `Submitting config for ${patientName}, rotation=${rotationDegree}°`);
+
+            if (!patientName) {
+                logger.warn('FORM', 'Patient name is empty');
+                showAlert('❌ Patient name is required', true);
+                return;
+            }
+            if (isNaN(rotationDegree) || rotationDegree < 1 || rotationDegree > 360) {
+                logger.warn('FORM', `Invalid rotation degree: ${rotationDegree}`);
+                showAlert('❌ Rotation degree must be between 1 and 360', true);
+                return;
+            }
 
             const outputBox = document.getElementById('api-output-code');
             const statusBox = document.getElementById('output-status');
@@ -435,18 +510,22 @@
                 const duration = Math.round(performance.now() - start);
                 const result = await res.json();
                 if (res.ok) {
+                    logger.info('API', `POST /api/dispense-schedule completed in ${duration}ms`);
                     statusBox.innerText = `HTTP ${res.status} OK - Saved (${duration}ms)`;
                     statusBox.className = 'output-status success';
                     outputBox.innerText = JSON.stringify(result, null, 2);
                     showAlert("✅ 7-Rack schedule saved & synced! ESP32 can now fetch the updated sequence.");
                     fetchCurrentConfig();
                 } else {
+                    logger.warn('API', `POST /api/dispense-schedule returned HTTP ${res.status}: ${result.message}`);
                     statusBox.innerText = `HTTP ${res.status} Error`;
                     statusBox.className = 'output-status error';
                     outputBox.innerText = JSON.stringify(result, null, 2);
                     showAlert("❌ Error: " + result.message, true);
                 }
             } catch (err) {
+                const duration = Math.round(performance.now() - start);
+                logger.error('API', `POST /api/dispense-schedule failed after ${duration}ms: ${err.message}`);
                 statusBox.innerText = 'Network Error';
                 statusBox.className = 'output-status error';
                 outputBox.innerText = '// Error: ' + err.message;
@@ -455,6 +534,7 @@
         });
 
         async function simulateEsp32Get() {
+            logger.info('SIMULATOR', 'Simulating ESP32 GET /api/dispense');
             const outputBox = document.getElementById('api-output-code');
             const statusBox = document.getElementById('output-status');
             statusBox.innerText = 'Calling GET /api/dispense...';
@@ -469,7 +549,10 @@
                 statusBox.innerText = `HTTP ${res.status} OK (${duration}ms)`;
                 statusBox.className = 'output-status success';
                 outputBox.innerText = JSON.stringify(data, null, 2);
+                logger.info('SIMULATOR', `GET /api/dispense simulation completed in ${duration}ms`);
             } catch (err) {
+                const duration = Math.round(performance.now() - start);
+                logger.error('SIMULATOR', `GET /api/dispense simulation failed after ${duration}ms: ${err.message}`);
                 statusBox.innerText = 'Request Failed';
                 statusBox.className = 'output-status error';
                 outputBox.innerText = '// Error: ' + err.message;
@@ -477,6 +560,7 @@
         }
 
         async function simulateEsp32Post() {
+            logger.info('SIMULATOR', 'Simulating ESP32 POST /api/dispense-log');
             const outputBox = document.getElementById('api-output-code');
             const statusBox = document.getElementById('output-status');
             statusBox.innerText = 'Calling POST /api/dispense-log...';
@@ -506,9 +590,12 @@
                 statusBox.className = 'output-status success';
                 outputBox.innerText = JSON.stringify(data, null, 2);
                 showAlert(`💊 ESP32 logged successful dispensation for Rack #${payload.rack_id}!`);
+                logger.info('SIMULATOR', `POST /api/dispense-log simulation completed in ${duration}ms`);
                 fetchCurrentConfig();
                 fetchLogs();
             } catch (err) {
+                const duration = Math.round(performance.now() - start);
+                logger.error('SIMULATOR', `POST /api/dispense-log simulation failed after ${duration}ms: ${err.message}`);
                 statusBox.innerText = 'Request Failed';
                 statusBox.className = 'output-status error';
                 outputBox.innerText = '// Error: ' + err.message;
@@ -516,6 +603,7 @@
         }
 
         async function simulateEsp32Intake() {
+            logger.info('SIMULATOR', 'Simulating ESP32 POST /api/intake');
             const outputBox = document.getElementById('api-output-code');
             const statusBox = document.getElementById('output-status');
             statusBox.innerText = 'Calling POST /api/intake...';
@@ -543,8 +631,11 @@
                 statusBox.className = 'output-status success';
                 outputBox.innerText = JSON.stringify(data, null, 2);
                 showAlert("🚪 Patient intake confirmed & recorded!");
+                logger.info('SIMULATOR', `POST /api/intake simulation completed in ${duration}ms`);
                 fetchLogs();
             } catch (err) {
+                const duration = Math.round(performance.now() - start);
+                logger.error('SIMULATOR', `POST /api/intake simulation failed after ${duration}ms: ${err.message}`);
                 statusBox.innerText = 'Request Failed';
                 statusBox.className = 'output-status error';
                 outputBox.innerText = '// Error: ' + err.message;
@@ -552,6 +643,7 @@
         }
 
         async function fetchLogs() {
+            logger.info('LOGS', 'Fetching dispensation logs');
             const container = document.getElementById('logs-container');
             try {
                 const res = await fetch('/api/dispense-logs');
@@ -590,12 +682,13 @@
                     `;
                 }
             } catch (err) {
-                console.error("Failed to load logs:", err);
+                logger.error('LOGS', 'Failed to load dispensation logs: ' + err.message);
             }
         }
 
         async function clearLogs() {
             if (confirm("Are you sure you want to clear all dispensation logs?")) {
+                logger.info('LOGS', 'Clearing all dispensation logs');
                 await fetch('/api/dispense-logs', { method: 'DELETE' });
                 fetchLogs();
                 showAlert("Logs cleared.");
@@ -603,6 +696,7 @@
         }
 
         // Init
+        logger.info('INIT', 'Mediminder dashboard initialized');
         fetchCurrentConfig();
         fetchLogs();
     </script>

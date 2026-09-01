@@ -1,0 +1,38 @@
+2026-09-01 09:38:50 - mediminder - INFO - ======================================================================
+2026-09-01 09:38:50 - mediminder - INFO -   MEDIMINDER by SJNHS - Smart Medicine Dispenser API Server
+2026-09-01 09:38:50 - mediminder - INFO - ======================================================================
+2026-09-01 09:38:50 - mediminder - INFO - Starting Flask Server on port 5000...
+2026-09-01 09:38:50 - mediminder - INFO - API Endpoints:
+2026-09-01 09:38:50 - mediminder - INFO -   GET  /api/dispense          - Fetch 7-rack schedule, active rack & full PHT RTC timestamp
+2026-09-01 09:38:50 - mediminder - INFO -   POST /api/dispense-log      - Submit successful dispense event (advances sequence pointer)
+2026-09-01 09:38:50 - mediminder - INFO -   POST /api/intake            - Submit patient intake / drawer-open event
+2026-09-01 09:38:50 - mediminder - INFO -   POST /api/dispense-schedule - Update 7-rack date & time schedule
+2026-09-01 09:38:50 - mediminder - INFO -   GET  /api/dispense-logs     - View dispensation history
+2026-09-01 09:38:50 - mediminder - INFO -   GET  /api/intake-logs       - View patient intake history
+2026-09-01 09:38:50 - mediminder - INFO -   GET  /api/status            - Health check & system status
+2026-09-01 09:38:50 - mediminder - INFO -   GET  /                      - Landing Page (hero, features, rationale)
+2026-09-01 09:38:50 - mediminder - INFO -   GET  /dashboard             - Web Dashboard UI
+2026-09-01 09:38:50 - mediminder - INFO - Security Features:
+2026-09-01 09:38:50 - mediminder - INFO -   ✓ Input validation and sanitization
+2026-09-01 09:38:50 - mediminder - INFO -   ✓ Rate limiting (placeholder - implement in production)
+2026-09-01 09:38:50 - mediminder - INFO -   ✓ CORS configuration
+2026-09-01 09:38:50 - mediminder - INFO -   ✓ Datetime format validation
+2026-09-01 09:38:59 - mediminder - INFO - ======================================================================
+2026-09-01 09:38:59 - mediminder - INFO -   MEDIMINDER by SJNHS - Smart Medicine Dispenser API Server
+2026-09-01 09:38:59 - mediminder - INFO - ======================================================================
+2026-09-01 09:38:59 - mediminder - INFO - Starting Flask Server on port 5000...
+2026-09-01 09:38:59 - mediminder - INFO - API Endpoints:
+2026-09-01 09:38:59 - mediminder - INFO -   GET  /api/dispense          - Fetch 7-rack schedule, active rack & full PHT RTC timestamp
+2026-09-01 09:38:59 - mediminder - INFO -   POST /api/dispense-log      - Submit successful dispense event (advances sequence pointer)
+2026-09-01 09:38:59 - mediminder - INFO -   POST /api/intake            - Submit patient intake / drawer-open event
+2026-09-01 09:38:59 - mediminder - INFO -   POST /api/dispense-schedule - Update 7-rack date & time schedule
+2026-09-01 09:38:59 - mediminder - INFO -   GET  /api/dispense-logs     - View dispensation history
+2026-09-01 09:38:59 - mediminder - INFO -   GET  /api/intake-logs       - View patient intake history
+2026-09-01 09:38:59 - mediminder - INFO -   GET  /api/status            - Health check & system status
+2026-09-01 09:38:59 - mediminder - INFO -   GET  /                      - Landing Page (hero, features, rationale)
+2026-09-01 09:38:59 - mediminder - INFO -   GET  /dashboard             - Web Dashboard UI
+2026-09-01 09:38:59 - mediminder - INFO - Security Features:
+2026-09-01 09:38:59 - mediminder - INFO -   ✓ Input validation and sanitization
+2026-09-01 09:38:59 - mediminder - INFO -   ✓ Rate limiting (placeholder - implement in production)
+2026-09-01 09:38:59 - mediminder - INFO -   ✓ CORS configuration
+2026-09-01 09:38:59 - mediminder - INFO -   ✓ Datetime format validation
