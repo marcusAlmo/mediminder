@@ -7,9 +7,11 @@
     <meta name="description"
         content="Mediminder by SJNHS - Smart Medicine Dispenser System. Reliable, automated medication scheduling and dispensing.">
     <meta name="theme-color" content="#FF4B4B" id="metaTheme">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" type="image/png" href="/static/icon.png">
-    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 
     <title>Mediminder by SJNHS &mdash; Smart Medicine Dispenser</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -1353,6 +1355,142 @@
             .phone-mockup { width: 160px; height: 310px; }
             .phone-app-icon { width: 56px; height: 56px; }
         }
+
+        /* ============ INSTALL MODAL ============ */
+        .install-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .install-modal-backdrop.active {
+            display: flex;
+        }
+
+        .install-modal {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-card);
+            width: 100%;
+            max-width: 420px;
+            padding: 1.75rem;
+            text-align: center;
+            animation: modalPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .install-modal h3 {
+            font-size: 1.3rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .install-modal p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+
+        .install-steps {
+            text-align: left;
+            background: var(--surface-2);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            color: var(--text);
+            font-weight: 600;
+            line-height: 1.7;
+        }
+
+        .install-steps ol {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .install-steps li {
+            margin-bottom: 0.4rem;
+        }
+
+        .install-steps li:last-child {
+            margin-bottom: 0;
+        }
+
+        .install-modal .btn-primary {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .install-modal .btn-secondary {
+            width: 100%;
+        }
+
+        [data-theme="dark"] .install-modal {
+            background: var(--surface);
+            border-color: rgba(255, 180, 120, 0.18);
+        }
+
+        /* ============ FLOATING INSTALL BUTTON ============ */
+        .fab-install {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 0 var(--primary-dark), 0 8px 20px rgba(255, 75, 75, 0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            cursor: pointer;
+            z-index: 900;
+            transition: all 0.12s ease;
+        }
+
+        .fab-install:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .fab-install:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 var(--primary-dark);
+        }
+
+        @media (max-width: 768px) {
+            .fab-install {
+                display: flex;
+                bottom: calc(1rem + env(safe-area-inset-bottom));
+                right: calc(1rem + env(safe-area-inset-right));
+            }
+        }
+
+        @media (max-width: 768px) and (orientation: landscape) {
+            .fab-install {
+                width: 48px;
+                height: 48px;
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
 
@@ -1774,6 +1912,11 @@
                 .catch(err => console.log('Service Worker registration failed:', err));
         }
 
+        // Hide install FAB if already installed
+        if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+            document.querySelector('.fab-install').style.display = 'none';
+        }
+
         /* ============ PWA INSTALL ============ */
         let _installPrompt = null;
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -1781,19 +1924,65 @@
             _installPrompt = e;
         });
 
-        function triggerInstall() {
+        function getInstallSteps() {
+            const ua = navigator.userAgent;
+            const platform = /iPhone|iPad|iPod/.test(ua) ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop';
+            const steps = {
+                ios: [
+                    'Tap the Share button <strong>\u2197</strong> in Safari',
+                    'Scroll down and tap <strong>Add to Home Screen</strong>',
+                    'Tap <strong>Add</strong> in the top right'
+                ],
+                android: [
+                    'Tap the <strong>menu (\u22ee)</strong> in Chrome',
+                    'Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>',
+                    'Tap <strong>Install</strong> when prompted'
+                ],
+                desktop: [
+                    'Click the <strong>install icon</strong> in the address bar, or',
+                    'Open your browser menu and choose <strong>Install Mediminder</strong>',
+                    'Click <strong>Install</strong> when prompted'
+                ]
+            };
+            return { platform, steps: steps[platform] };
+        }
+
+        function openInstallModal() {
+            const modal = document.getElementById('installModal');
+            const actionBtn = document.getElementById('installModalAction');
+            const stepsBox = document.getElementById('installSteps');
+            const { platform, steps } = getInstallSteps();
+
+            stepsBox.innerHTML = `<ol>${steps.map(s => `<li>${s}</li>`).join('')}</ol>`;
+
+            if (_installPrompt) {
+                actionBtn.textContent = 'Install Now';
+                actionBtn.style.display = 'block';
+            } else {
+                actionBtn.style.display = 'none';
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeInstallModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            const modal = document.getElementById('installModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function runInstallAction() {
             if (_installPrompt) {
                 _installPrompt.prompt();
                 _installPrompt.userChoice.then(() => { _installPrompt = null; });
-            } else {
-                // Fallback: guide user manually
-                const ua = navigator.userAgent;
-                if (/iPhone|iPad|iPod/.test(ua)) {
-                    alert('On iOS: tap the Share button \u2197 then "Add to Home Screen" \ud83d\udcf1');
-                } else {
-                    alert('Open your browser menu and tap "Install App" or "Add to Home Screen" \ud83d\udcf2');
-                }
             }
+            closeInstallModal();
+        }
+
+        function triggerInstall() {
+            openInstallModal();
         }
 
         /* ============ CAROUSEL ============ */
@@ -1806,6 +1995,22 @@
             });
         }
     </script>
+
+    <!-- Floating Install Button -->
+    <button class="fab-install" aria-label="Install Mediminder" onclick="triggerInstall()">
+        <i class="bi bi-download"></i>
+    </button>
+
+    <!-- Install Modal -->
+    <div id="installModal" class="install-modal-backdrop" onclick="closeInstallModal(event)">
+        <div class="install-modal" role="dialog" aria-modal="true" aria-labelledby="installModalTitle" aria-describedby="installModalBody">
+            <h3 id="installModalTitle">Install Mediminder</h3>
+            <p id="installModalBody">Add Mediminder to your home screen for quick, app-like access.</p>
+            <div id="installSteps" class="install-steps"></div>
+            <button class="btn btn-primary" id="installModalAction" onclick="runInstallAction()">Install Now</button>
+            <button class="btn btn-secondary" onclick="closeInstallModal()">Not Now</button>
+        </div>
+    </div>
 </body>
 
 </html>

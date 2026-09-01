@@ -2,32 +2,35 @@
   "name": "Mediminder by SJNHS",
   "short_name": "Mediminder",
   "description": "Smart Medicine Dispenser - Automated medication management system",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0b0f19",
-  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "background_color": "#FFFDF5",
+  "theme_color": "#FF4B4B",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%233b82f6' width='192' height='192'/><text x='50%' y='50%' font-size='100' fill='white' text-anchor='middle' dominant-baseline='middle' font-weight='bold'>💊</text></svg>",
+      "src": "/static/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%233b82f6' width='512' height='512'/><text x='50%' y='50%' font-size='300' fill='white' text-anchor='middle' dominant-baseline='middle' font-weight='bold'>💊</text></svg>",
+      "src": "/static/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512x512.png",
+      "sizes": "any",
+      "type": "image/png"
     }
   ],
   "categories": ["medical", "productivity"],
   "screenshots": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%230b0f19' width='540' height='720'/><text x='50%' y='50%' font-size='60' fill='%233b82f6' text-anchor='middle' dominant-baseline='middle'>Mediminder</text></svg>",
-      "sizes": "540x720",
-      "type": "image/svg+xml",
+      "src": "/static/icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
       "form_factor": "narrow"
     }
   ],
@@ -36,12 +39,12 @@
       "name": "View Schedule",
       "short_name": "Schedule",
       "description": "View medication schedule",
-      "url": "/?tab=schedule",
+      "url": "/dashboard#schedule",
       "icons": [
         {
-          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%233b82f6' width='96' height='96'/><text x='50%' y='50%' font-size='50' fill='white' text-anchor='middle' dominant-baseline='middle'>📅</text></svg>",
-          "sizes": "96x96",
-          "type": "image/svg+xml"
+          "src": "/static/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -49,23 +52,14 @@
       "name": "View Logs",
       "short_name": "Logs",
       "description": "View dispensation logs",
-      "url": "/?tab=logs",
+      "url": "/dashboard#logs",
       "icons": [
         {
-          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%2310b981' width='96' height='96'/><text x='50%' y='50%' font-size='50' fill='white' text-anchor='middle' dominant-baseline='middle'>📋</text></svg>",
-          "sizes": "96x96",
-          "type": "image/svg+xml"
+          "src": "/static/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }
-  ],
-  "share_target": {
-    "action": "/share",
-    "method": "POST",
-    "enctype": "application/x-www-form-urlencoded",
-    "params": {
-      "title": "title",
-      "text": "text"
-    }
-  }
+  ]
 }

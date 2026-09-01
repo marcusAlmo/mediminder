@@ -1,15 +1,20 @@
 // Mediminder Service Worker
 // Provides offline support, caching, and background sync
 
-const CACHE_NAME = 'mediminder-v1';
+const CACHE_NAME = 'mediminder-v2';
 const RUNTIME_CACHE = 'mediminder-runtime-v1';
 const API_CACHE = 'mediminder-api-v1';
 
 const STATIC_ASSETS = [
   '/',
+  '/dashboard',
   '/static/style.css',
   '/static/manifest.json',
-  '/static/offline.html'
+  '/static/offline.html',
+  '/static/icon.png',
+  '/static/icon-192x192.png',
+  '/static/icon-512x512.png',
+  '/static/apple-touch-icon.png'
 ];
 
 // Install event - cache static assets

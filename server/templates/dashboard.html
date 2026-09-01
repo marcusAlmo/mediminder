@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Mediminder by SJNHS - Smart Medicine Dispenser System">
     <meta name="theme-color" content="#FF4B4B" id="metaTheme">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" type="image/png" href="/static/icon.png">
-    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 
     <title>Mediminder by SJNHS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -1029,7 +1031,7 @@
             .tabs { padding: 0.5rem 0.6rem; gap: 0.4rem; }
             .tab-btn { padding: 0.55rem 0.9rem; font-size: 0.82rem; }
 
-            .container-main { padding: 1rem 0.75rem 4.5rem; }
+            .container-main { padding: 1rem 0.75rem 3.5rem; }
 
             .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
             .stat-card { padding: 1rem 0.8rem 0.85rem; }
@@ -1062,11 +1064,121 @@
             to { transform: rotate(360deg); }
         }
 
+        .spin {
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
                 transition-duration: 0.01ms !important;
             }
+        }
+
+        /* ============ BOTTOM NAVIGATION (Mobile) ============ */
+        .bottom-nav {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .tabs-bar {
+                display: none;
+            }
+
+            body {
+                padding-bottom: calc(70px + env(safe-area-inset-bottom));
+            }
+
+            .container-main {
+                padding-bottom: calc(3.5rem + 70px + env(safe-area-inset-bottom));
+            }
+
+            .bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 70px;
+                background: var(--nav-bg);
+                backdrop-filter: saturate(180%) blur(16px);
+                -webkit-backdrop-filter: saturate(180%) blur(16px);
+                border-top: 3px solid var(--border);
+                z-index: 1040;
+                justify-content: space-around;
+                align-items: center;
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .bottom-nav .nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 3px;
+                height: 100%;
+                background: transparent;
+                border: none;
+                color: var(--text-muted);
+                font-family: var(--font);
+                font-weight: 800;
+                font-size: 0.66rem;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                transition: all var(--transition);
+                cursor: pointer;
+            }
+
+            .bottom-nav .nav-item i {
+                font-size: 1.25rem;
+            }
+
+            .bottom-nav .nav-item.active {
+                color: var(--primary);
+            }
+
+            .bottom-nav .nav-item:active {
+                transform: scale(0.95);
+            }
+        }
+
+        /* ============ LANDSCAPE MOBILE REFINEMENTS ============ */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0.6rem;
+            }
+
+            .racks-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.8rem;
+            }
+
+            .bottom-nav {
+                height: 62px;
+            }
+        }
+
+        /* ============ PULL TO REFRESH INDICATOR ============ */
+        .pull-indicator {
+            display: none;
+            text-align: center;
+            padding: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .pull-indicator.visible {
+            display: block;
+        }
+
+        .pull-indicator i {
+            display: inline-block;
+            margin-right: 0.4rem;
+            transition: transform 0.1s linear;
         }
     </style>
 </head>
@@ -1117,6 +1229,26 @@
         </div>
     </div>
 
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav" role="tablist" aria-label="Mobile navigation">
+        <button class="nav-item active" data-tab="dashboard" role="tab" aria-selected="true">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-tab="schedule" role="tab" aria-selected="false">
+            <i class="bi bi-calendar-event"></i>
+            <span>Schedule</span>
+        </button>
+        <button class="nav-item" data-tab="logs" role="tab" aria-selected="false">
+            <i class="bi bi-file-text"></i>
+            <span>Logs</span>
+        </button>
+        <button class="nav-item" data-tab="settings" role="tab" aria-selected="false">
+            <i class="bi bi-gear-fill"></i>
+            <span>Settings</span>
+        </button>
+    </nav>
+
     <!-- Main Content -->
     <div class="container-main">
         <!-- Install Prompt -->
@@ -1133,6 +1265,9 @@
 
         <!-- ============ DASHBOARD TAB ============ -->
         <div id="tab-dashboard" class="tab-panel active" role="tabpanel">
+            <div id="pullIndicator" class="pull-indicator">
+                <i class="bi bi-arrow-down" id="pullIcon"></i> <span id="pullText">Pull down to refresh</span>
+            </div>
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><i class="bi bi-activity"></i> Live Overview</h2>
@@ -1431,10 +1566,17 @@
 
         /* ============ TAB NAVIGATION ============ */
         const tabBtns = document.querySelectorAll('.tab-btn');
+        const bottomNavItems = document.querySelectorAll('.bottom-nav .nav-item');
         const tabPanels = document.querySelectorAll('.tab-panel');
+        const tabNames = Array.from(tabBtns).map(b => b.dataset.tab);
 
         function activateTab(name) {
             tabBtns.forEach(b => {
+                const active = b.dataset.tab === name;
+                b.classList.toggle('active', active);
+                b.setAttribute('aria-selected', active);
+            });
+            bottomNavItems.forEach(b => {
                 const active = b.dataset.tab === name;
                 b.classList.toggle('active', active);
                 b.setAttribute('aria-selected', active);
@@ -1444,12 +1586,89 @@
         }
 
         tabBtns.forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+        bottomNavItems.forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
 
         // Open tab from URL hash
         const initialTab = (location.hash || '').replace('#', '');
         if (initialTab && document.getElementById(`tab-${initialTab}`)) {
             activateTab(initialTab);
         }
+
+        /* ============ SWIPE NAVIGATION ============ */
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const container = document.querySelector('.container-main');
+
+        container.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        container.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const delta = touchEndX - touchStartX;
+            const current = tabNames.find(n => {
+                const p = document.getElementById(`tab-${n}`);
+                return p && p.classList.contains('active');
+            }) || tabNames[0];
+            const idx = tabNames.indexOf(current);
+
+            if (delta < -60 && idx < tabNames.length - 1) {
+                activateTab(tabNames[idx + 1]);
+            } else if (delta > 60 && idx > 0) {
+                activateTab(tabNames[idx - 1]);
+            }
+        }, { passive: true });
+
+        /* ============ PULL TO REFRESH (Dashboard only) ============ */
+        const dashboardPanel = document.getElementById('tab-dashboard');
+        const pullIndicator = document.getElementById('pullIndicator');
+        const pullIcon = document.getElementById('pullIcon');
+        const pullText = document.getElementById('pullText');
+        let pullStartY = 0;
+        let pullCurrentY = 0;
+        let isPulling = false;
+
+        dashboardPanel.addEventListener('touchstart', (e) => {
+            if (!dashboardPanel.classList.contains('active')) return;
+            if (window.scrollY > 5) return;
+            pullStartY = e.touches[0].clientY;
+            isPulling = true;
+        }, { passive: true });
+
+        dashboardPanel.addEventListener('touchmove', (e) => {
+            if (!isPulling) return;
+            pullCurrentY = e.touches[0].clientY;
+            const diff = pullCurrentY - pullStartY;
+            if (diff > 0) {
+                pullIndicator.classList.add('visible');
+                const rotation = Math.min(diff / 2, 180);
+                pullIcon.style.transform = `rotate(${rotation}deg)`;
+                pullText.textContent = diff > 80 ? 'Release to refresh' : 'Pull down to refresh';
+            }
+        }, { passive: true });
+
+        dashboardPanel.addEventListener('touchend', () => {
+            if (!isPulling) return;
+            isPulling = false;
+            const diff = pullCurrentY - pullStartY;
+            if (diff > 80) {
+                pullText.textContent = 'Refreshing...';
+                pullIcon.className = 'bi bi-arrow-repeat spin';
+                refreshData();
+                setTimeout(() => {
+                    pullIndicator.classList.remove('visible');
+                    pullIcon.className = 'bi bi-arrow-down';
+                    pullIcon.style.transform = 'rotate(0deg)';
+                    pullText.textContent = 'Pull down to refresh';
+                }, 1200);
+            } else {
+                pullIndicator.classList.remove('visible');
+                pullIcon.style.transform = 'rotate(0deg)';
+                pullText.textContent = 'Pull down to refresh';
+            }
+            pullStartY = 0;
+            pullCurrentY = 0;
+        });
 
         /* ============ TOAST NOTIFICATIONS ============ */
         function showToast(message, type = 'info') {
@@ -1492,12 +1711,48 @@
         }
 
         /* ============ INSTALL PROMPT ============ */
-        let deferredPrompt;
+        const INSTALL_DISMISS_KEY = 'mediminder-install-dismissed';
+        let deferredPrompt = null;
+
+        function isInStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   navigator.standalone === true;
+        }
+
+        function shouldShowInstallPrompt() {
+            if (isInStandalone()) return false;
+            try {
+                const dismissed = localStorage.getItem(INSTALL_DISMISS_KEY);
+                if (dismissed) {
+                    const days = (Date.now() - parseInt(dismissed, 10)) / (1000 * 60 * 60 * 24);
+                    if (days < 7) return false;
+                }
+            } catch (e) {}
+            return true;
+        }
+
+        function initInstallPrompt() {
+            if (shouldShowInstallPrompt()) {
+                document.getElementById('installPrompt').classList.remove('hidden');
+            }
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            document.getElementById('installPrompt').classList.remove('hidden');
+            initInstallPrompt();
         });
+
+        function getInstallHelpText() {
+            const ua = navigator.userAgent;
+            if (/iPhone|iPad|iPod/.test(ua)) {
+                return 'To install Mediminder on iOS:\n1. Tap the Share button \u2197 in Safari.\n2. Scroll down and tap "Add to Home Screen".\n3. Tap "Add".';
+            }
+            if (/Android/.test(ua)) {
+                return 'To install on Android:\n1. Tap the menu (\u22ee) in Chrome.\n2. Tap "Add to Home screen" or "Install app".\n3. Tap "Install".';
+            }
+            return 'To install on this device:\n1. Click the install icon in the address bar, or\n2. Open your browser menu and choose "Install Mediminder".';
+        }
 
         function installApp() {
             if (deferredPrompt) {
@@ -1505,17 +1760,21 @@
                 deferredPrompt.userChoice.then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
                         showToast('App installed successfully', 'success');
+                        document.getElementById('installPrompt').classList.add('hidden');
                     }
                     deferredPrompt = null;
                 });
             } else {
-                showToast('Use your browser menu \u2192 "Add to Home Screen"', 'info');
+                alert(getInstallHelpText());
             }
         }
 
         function dismissInstall() {
             document.getElementById('installPrompt').classList.add('hidden');
+            try { localStorage.setItem(INSTALL_DISMISS_KEY, Date.now().toString()); } catch (e) {}
         }
+
+        initInstallPrompt();
 
         // Format ISO timestamp to "Monday, Jan 1, 2026 at 8:00 AM"
         function formatIsoToReadable(isoStr) {
