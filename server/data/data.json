@@ -51,7 +51,7 @@
         "notes": "Rack 7"
       }
     ],
-    "patient_name": "SJNHS Student",
+    "patient_name": "Test Patient",
     "rotation_degree": 60,
     "current_rack": 1,
     "rack_count": 7,
@@ -64,7 +64,8 @@
       "08:00",
       "12:30",
       "18:00"
-    ]
+    ],
+    "last_updated_at": "2026-09-01T09:48:26.028806+08:00"
   },
   "dispense_logs": [],
   "intake_logs": []
