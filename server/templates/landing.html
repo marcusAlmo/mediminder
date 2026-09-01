@@ -1362,16 +1362,20 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.45);
             z-index: 2000;
-            display: none;
+            opacity: 0;
+            visibility: hidden;
+            display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
+            transition: opacity 0.2s, visibility 0.2s;
         }
 
         .install-modal-backdrop.active {
-            display: flex;
+            opacity: 1;
+            visibility: visible;
         }
 
         .install-modal {
@@ -1457,18 +1461,25 @@
             color: #fff;
             border: none;
             box-shadow: 0 4px 0 var(--primary-dark), 0 8px 20px rgba(255, 75, 75, 0.35);
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.4rem;
             cursor: pointer;
             z-index: 900;
             transition: all 0.12s ease;
+            animation: fabPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes fabPulse {
+            0%, 100% { box-shadow: 0 4px 0 var(--primary-dark), 0 8px 20px rgba(255, 75, 75, 0.35); }
+            50% { box-shadow: 0 4px 0 var(--primary-dark), 0 12px 28px rgba(255, 75, 75, 0.5); }
         }
 
         .fab-install:hover {
             background: var(--primary-light);
             transform: translateY(-2px);
+            animation: none;
         }
 
         .fab-install:active {
@@ -1476,9 +1487,32 @@
             box-shadow: 0 2px 0 var(--primary-dark);
         }
 
+        .fab-install.hidden {
+            display: none !important;
+        }
+
+        .fab-tooltip {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            background: var(--text);
+            color: var(--bg);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .fab-install:hover .fab-tooltip {
+            opacity: 1;
+        }
+
         @media (max-width: 768px) {
             .fab-install {
-                display: flex;
                 bottom: calc(1rem + env(safe-area-inset-bottom));
                 right: calc(1rem + env(safe-area-inset-right));
             }
@@ -1913,9 +1947,14 @@
         }
 
         // Hide install FAB if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
-            document.querySelector('.fab-install').style.display = 'none';
-        }
+        window.addEventListener('load', () => {
+            const fabBtn = document.querySelector('.fab-install');
+            if (fabBtn) {
+                if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+                    fabBtn.classList.add('hidden');
+                }
+            }
+        });
 
         /* ============ PWA INSTALL ============ */
         let _installPrompt = null;
@@ -1963,22 +2002,27 @@
             }
 
             modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
         }
 
         function closeInstallModal(e) {
             if (e && e.target !== e.currentTarget) return;
             const modal = document.getElementById('installModal');
             modal.classList.remove('active');
-            document.body.style.overflow = '';
         }
 
         function runInstallAction() {
             if (_installPrompt) {
                 _installPrompt.prompt();
-                _installPrompt.userChoice.then(() => { _installPrompt = null; });
+                _installPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA installed successfully');
+                    }
+                    _installPrompt = null;
+                    closeInstallModal();
+                });
+            } else {
+                closeInstallModal();
             }
-            closeInstallModal();
         }
 
         function triggerInstall() {
@@ -1997,8 +2041,9 @@
     </script>
 
     <!-- Floating Install Button -->
-    <button class="fab-install" aria-label="Install Mediminder" onclick="triggerInstall()">
+    <button class="fab-install" aria-label="Install Mediminder" onclick="triggerInstall()" title="Click to install Mediminder as an app">
         <i class="bi bi-download"></i>
+        <span class="fab-tooltip">Install App</span>
     </button>
 
     <!-- Install Modal -->
