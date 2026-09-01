@@ -1,0 +1,1 @@
+{"id": 1, "timestamp": "2026-09-01T13:27:29.221473+08:00", "recorded_at": "2026-09-01T13:27:29.221495+08:00", "status": "success", "patient_name": "Test Patient", "rotation_degree": 60.0, "rack_id": 2, "slot": 2, "notes": "Rack #2 dispensed successfully via ESP32", "next_rack": 3, "rack_count_after": 1, "rack_warning": true}

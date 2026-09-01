@@ -105,6 +105,7 @@
         /* Rack status pills */
         [data-theme="dark"] .rack-status.dispensed { background: rgba(88, 204, 2, 0.18); border-color: rgba(88, 204, 2, 0.35); }
         [data-theme="dark"] .rack-status.pending   { background: rgba(255, 200, 0, 0.18); border-color: rgba(255, 200, 0, 0.35); color: #FFC800; }
+        [data-theme="dark"] .rack-status.taken     { background: rgba(28, 176, 246, 0.18); border-color: rgba(28, 176, 246, 0.35); color: #5DCCFF; }
 
         /* Alerts */
         [data-theme="dark"] .alert-info    { background: rgba(255, 200, 0, 0.10); border-color: rgba(255, 200, 0, 0.30); }
@@ -650,35 +651,156 @@
             font-size: 0.88rem !important;
         }
 
-        /* ============ RACK ITEMS ============ */
+        /* ============ MODALS ============ */
+        #drugModal {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        #drugModal > div {
+            animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* ============ QUICK ACTIONS ============ */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-xs);
+            border: 2px solid var(--border);
+        }
+
+        .quick-actions .btn {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        @media (max-width: 768px) {
+            .quick-actions {
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+            .quick-actions .btn {
+                min-width: unset;
+                width: 100%;
+            }
+        }
+
+        /* ============ DAY GROUPS ============ */
+        .day-group {
+            margin-bottom: 2rem;
+        }
+
+        .day-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-xs);
+            border: 2px solid var(--border);
+        }
+
+        .day-label {
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        .day-date {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .day-status-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .day-status-indicator.empty {
+            background: #FFE8E8;
+            color: var(--primary);
+            border: 1.5px solid #FFB0B0;
+        }
+
+        .day-status-indicator.loaded {
+            background: #E8F9D9;
+            color: var(--accent-green);
+            border: 1.5px solid #B8E87A;
+        }
+
+        [data-theme="dark"] .day-status-indicator.empty {
+            background: rgba(255, 75, 75, 0.18);
+            border-color: rgba(255, 75, 75, 0.35);
+            color: #FF7070;
+        }
+
+        [data-theme="dark"] .day-status-indicator.loaded {
+            background: rgba(88, 204, 2, 0.18);
+            border-color: rgba(88, 204, 2, 0.35);
+            color: #7FCC45;
+        }
+
+        /* ============ RACK ITEMS (CARDS) ============ */
+        .racks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
         .rack-item {
             background: var(--surface);
             border: 2px solid var(--border);
             border-radius: var(--radius-sm);
-            padding: 1.1rem 1.15rem;
-            margin-bottom: 0.85rem;
+            padding: 1.25rem;
             transition: all var(--transition);
-            box-shadow: 0 4px 0 var(--border-strong);
+            box-shadow: var(--shadow-card);
             position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
         .rack-item::before {
             content: '';
             position: absolute;
-            left: -2px; top: 50%;
-            transform: translateY(-50%);
-            width: 5px;
-            height: 60%;
-            min-height: 28px;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
             background: var(--border-strong);
-            border-radius: 0 4px 4px 0;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
             transition: background var(--transition);
         }
 
         .rack-item:hover {
             border-color: var(--border-strong);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 0 var(--border-strong);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 0 var(--border-strong), 0 10px 24px rgba(74, 63, 53, 0.12);
         }
 
         .rack-item.active {
@@ -689,10 +811,9 @@
 
         .rack-item.active::before {
             background: var(--secondary);
-            height: 75%;
         }
 
-        .rack-item.dispensed { opacity: 0.6; }
+        .rack-item.dispensed { opacity: 0.7; }
 
         .rack-item.dispensed::before { background: var(--accent-green); }
 
@@ -740,6 +861,7 @@
         }
         .rack-status.dispensed { color: var(--accent-green); background: #E8F9D9; border-color: #B8E87A; }
         .rack-status.pending   { color: #E8A000; background: #FFF5CC; border-color: #FFD740; }
+        .rack-status.taken     { color: var(--accent-blue); background: #E3F3FF; border-color: #A8D8FF; }
 
         /* ============ LOGS ============ */
         .log-item {
@@ -777,6 +899,42 @@
 
         .log-message { color: var(--text); margin: 0.4rem 0 0.25rem; font-weight: 800; font-size: 0.95rem; }
         .log-notes { color: var(--text-muted); font-size: 0.82rem; font-weight: 600; }
+
+        .log-drugs {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .log-drug-tag {
+            background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            box-shadow: 0 2px 4px rgba(74, 63, 53, 0.06);
+            transition: all var(--transition);
+        }
+        .log-drug-tag::before {
+            content: '💊';
+            font-size: 0.75rem;
+        }
+        .log-drug-tag:hover {
+            border-color: var(--primary-light);
+            box-shadow: 0 3px 8px rgba(255, 75, 75, 0.12);
+        }
+        .log-drug-empty {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
 
         /* ============ ALERTS ============ */
         .alert { border-radius: var(--radius-xs); padding: 1rem 1.15rem; border: 2px solid; font-weight: 600; }
@@ -883,6 +1041,9 @@
             .card-title { font-size: 1rem; }
             .card { border-radius: 16px; }
 
+            .racks-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+            .rack-item { padding: 1rem; }
+
             .btn-primary, .btn-secondary { padding: 0.65rem 1.2rem !important; font-size: 0.88rem; }
             .footer { padding: 1.25rem 1rem; }
         }
@@ -892,6 +1053,8 @@
             .tab-btn .tab-label { display: none; }
             .tab-btn { padding: 0.6rem 1rem; }
             .tab-btn i { font-size: 1.1rem; }
+            .racks-grid { grid-template-columns: 1fr; gap: 0.9rem; }
+            .rack-item { padding: 0.95rem; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -988,6 +1151,12 @@
                             <div class="stat-label">Next Rack</div>
                         </div>
                         <div class="stat-card">
+                            <div class="stat-icon-wrap"><i class="bi bi-hourglass-split"></i></div>
+                            <i class="bi bi-hourglass-split stat-icon"></i>
+                            <div class="stat-value" id="statWaitTime">--</div>
+                            <div class="stat-label">Wait Until</div>
+                        </div>
+                        <div class="stat-card">
                             <div class="stat-icon-wrap"><i class="bi bi-stack"></i></div>
                             <i class="bi bi-stack stat-icon"></i>
                             <div class="stat-value" id="statRacksLeft">--</div>
@@ -1047,10 +1216,21 @@
 
                         <div class="mb-3">
                             <label class="form-label">7-Rack Schedule</label>
+                            <div class="quick-actions mb-3">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="scheduleThreeTimesDaily()">
+                                    <i class="bi bi-clock-history"></i> 3x Daily (6:30am, 11:30am, 6:30pm)
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="scheduleTwiceDaily()">
+                                    <i class="bi bi-clock-history"></i> 2x Daily (6:30am, 6:30pm)
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="scheduleDaily()">
+                                    <i class="bi bi-clock-history"></i> Daily (6:30am)
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="autoFillSchedule()">
+                                    <i class="bi bi-lightning-charge-fill"></i> Auto-Fill (4h spacing)
+                                </button>
+                            </div>
                             <div id="racksContainer"></div>
-                            <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="autoFillSchedule()">
-                                <i class="bi bi-lightning-charge-fill"></i> Auto-Fill (4h spacing)
-                            </button>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100">
@@ -1114,6 +1294,41 @@
                         <i class="bi bi-download"></i> Install as App
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drug Modal -->
+    <div id="drugModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--surface); border-radius: var(--radius); border: 2px solid var(--border); padding: 1.5rem; max-width: 500px; width: 90%; box-shadow: var(--shadow-md);">
+            <h3 style="margin-bottom: 1rem; color: var(--text); font-weight: 900;">
+                <i class="bi bi-capsule"></i> Edit Drugs for Rack #<span id="modalRackId">--</span>
+            </h3>
+            
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Drug Name</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" class="form-control" id="drugInput" placeholder="e.g., Aspirin, Metformin" style="flex: 1;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addDrug()">
+                        <i class="bi bi-plus-circle-fill"></i> Add
+                    </button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label class="form-label">Current Drugs</label>
+                <div id="drugsList" style="background: var(--surface-2); border: 2px solid var(--border); border-radius: var(--radius-xs); padding: 1rem; min-height: 80px;">
+                    <p style="color: var(--text-dim); text-align: center; margin: 0;">No drugs added yet</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" class="btn btn-primary" onclick="saveDrugs()" style="flex: 1;">
+                    <i class="bi bi-check-circle-fill"></i> Save
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeDrugModal()" style="flex: 1;">
+                    <i class="bi bi-x-circle-fill"></i> Cancel
+                </button>
             </div>
         </div>
     </div>
@@ -1296,14 +1511,62 @@
             }
         }
 
-        /* ============ LIVE CLOCK ============ */
+        /* ============ LIVE CLOCK & WAIT TIME ============ */
+        let nextRackDatetime = null;
+        
         function updateClock() {
             const now = new Date();
             const timeString = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
             document.getElementById('statTime').textContent = timeString;
+            
+            // Update wait time every second
+            if (nextRackDatetime) {
+                const waitTime = calculateWaitTime(nextRackDatetime);
+                document.getElementById('statWaitTime').textContent = waitTime;
+            }
         }
         setInterval(updateClock, 1000);
         updateClock();
+
+        // Calculate wait time until next drink
+        function calculateWaitTime(nextRackDatetime) {
+            if (!nextRackDatetime) return '--';
+            
+            try {
+                const [datePart, timePart] = nextRackDatetime.split(' ');
+                const [year, month, day] = datePart.split('-');
+                const [hour, minute] = timePart.split(':');
+                
+                // Parse the PHT datetime (YYYY-MM-DD HH:MM)
+                // Create a date treating it as local time, then calculate offset
+                const nextDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), 0);
+                
+                // Get current time
+                const now = new Date();
+                
+                // Both times are in the same timezone context (PHT), so we can directly compare
+                const diffMs = nextDate.getTime() - now.getTime();
+                
+                if (diffMs <= 0) {
+                    return 'Now';
+                }
+                
+                const totalSeconds = Math.floor(diffMs / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                
+                if (hours > 0) {
+                    return `${hours}h ${minutes}m`;
+                } else if (minutes > 0) {
+                    return `${minutes}m`;
+                } else {
+                    return 'Soon';
+                }
+            } catch (err) {
+                console.warn('Failed to calculate wait time:', err);
+                return '--';
+            }
+        }
 
         /* ============ DATA LOADING ============ */
         async function loadData() {
@@ -1315,6 +1578,17 @@
                     document.getElementById('statPatient').textContent = data.patient_name;
                     document.getElementById('statNextRack').textContent = `Rack #${data.current_rack}`;
                     document.getElementById('statRacksLeft').textContent = data.rack_count;
+                    
+                    // Store next rack datetime for live updates
+                    nextRackDatetime = data.next_rack_datetime || null;
+                    
+                    // Calculate and display wait time
+                    if (data.next_rack_datetime) {
+                        const waitTime = calculateWaitTime(data.next_rack_datetime);
+                        document.getElementById('statWaitTime').textContent = waitTime;
+                    } else {
+                        document.getElementById('statWaitTime').textContent = 'Done';
+                    }
 
                     // Show next scheduled dispense with full date and time
                     const nextDispenseEl = document.getElementById('statusMessage');
@@ -1381,42 +1655,254 @@
             const container = document.getElementById('racksContainer');
             container.innerHTML = '';
 
+            // Group racks by day
+            const dayGroups = {};
             racks.forEach((rack) => {
-                const isActive = rack.status === 'pending';
-                const html = `
-                    <div class="rack-item ${isActive ? 'active' : 'dispensed'}">
-                        <div class="rack-header">
-                            <span class="rack-badge">Rack #${rack.rack_id}</span>
-                            <span class="rack-status ${rack.status}">${rack.status.toUpperCase()}</span>
-                        </div>
-                        <div class="rack-datetime mb-2" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 700;">
-                            ${formatDateTimeReadable(rack.datetime)}
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <input type="datetime-local" class="form-control form-control-sm"
-                                       value="${rack.datetime.replace(' ', 'T')}"
-                                       onchange="updateRack(${rack.rack_id}, this.value)">
-                            </div>
-                            <div class="col-md-6">
-                                <select class="form-select form-select-sm" onchange="updateRackStatus(${rack.rack_id}, this.value)">
-                                    <option value="pending" ${rack.status === 'pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="dispensed" ${rack.status === 'dispensed' ? 'selected' : ''}>Dispensed</option>
-                                </select>
-                            </div>
-                        </div>
+                const date = rack.datetime.split(' ')[0]; // YYYY-MM-DD
+                if (!dayGroups[date]) {
+                    dayGroups[date] = [];
+                }
+                dayGroups[date].push(rack);
+            });
+
+            // Render each day group
+            Object.keys(dayGroups).sort().forEach((date) => {
+                const dayRacks = dayGroups[date];
+                
+                // Check if day has drugs loaded
+                const hasDrugs = dayRacks.some(rack => rack.drugs && rack.drugs.length > 0);
+                
+                // Create day header
+                const dayGroup = document.createElement('div');
+                dayGroup.className = 'day-group';
+                
+                const dateObj = new Date(date + 'T00:00:00');
+                const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                const dayDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.innerHTML = `
+                    <div>
+                        <div class="day-label">${dayName}</div>
+                        <div class="day-date">${dayDate}</div>
+                    </div>
+                    <div class="day-status-indicator ${hasDrugs ? 'loaded' : 'empty'}">
+                        <i class="bi ${hasDrugs ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
+                        <span>${hasDrugs ? 'Loaded' : 'Empty'}</span>
                     </div>
                 `;
-                container.innerHTML += html;
+                dayGroup.appendChild(dayHeader);
+                
+                // Create grid for racks in this day
+                const gridWrapper = document.createElement('div');
+                gridWrapper.className = 'racks-grid';
+                
+                dayRacks.forEach((rack) => {
+                    const isActive = rack.status === 'pending';
+                    const drugsDisplay = rack.drugs && rack.drugs.length > 0 
+                        ? rack.drugs.join(', ') 
+                        : '<em style="color: var(--text-dim);">No drugs defined</em>';
+                    
+                    const html = `
+                        <div class="rack-item ${isActive ? 'active' : 'dispensed'}" data-rack-id="${rack.rack_id}" data-drugs='${JSON.stringify(rack.drugs || [])}'>
+                            <div class="rack-header">
+                                <span class="rack-badge">Rack #${rack.rack_id}</span>
+                                <span class="rack-status ${rack.status}">${rack.status.toUpperCase()}</span>
+                            </div>
+                            <div class="rack-datetime mb-3" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-top: 0.5rem;">
+                                ${formatDateTimeReadable(rack.datetime)}
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem; flex: 1;">
+                                <div>
+                                    <label class="form-label" style="margin-bottom: 0.35rem;">Schedule</label>
+                                    <input type="datetime-local" class="form-control form-control-sm"
+                                           value="${rack.datetime.replace(' ', 'T')}"
+                                           onchange="updateRack(${rack.rack_id}, this.value)">
+                                </div>
+                                <div>
+                                    <label class="form-label" style="margin-bottom: 0.35rem;">Status</label>
+                                    <select class="form-select form-select-sm" onchange="updateRackStatus(${rack.rack_id}, this.value)">
+                                        <option value="pending" ${rack.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                        <option value="dispensed" ${rack.status === 'dispensed' ? 'selected' : ''}>Dispensed</option>
+                                        <option value="taken" ${rack.status === 'taken' ? 'selected' : ''}>Taken</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" style="margin-bottom: 0.35rem;">Drugs</label>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; padding: 0.5rem; background: var(--surface-2); border-radius: var(--radius-xs); border: 1px solid var(--border); min-height: 32px; display: flex; align-items: center;">
+                                        ${drugsDisplay}
+                                    </div>
+                                    <button type="button" class="btn btn-secondary btn-sm w-100 mt-2" onclick="openDrugModal(${rack.rack_id})">
+                                        <i class="bi bi-pencil-square"></i> Edit Drugs
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    gridWrapper.innerHTML += html;
+                });
+                
+                dayGroup.appendChild(gridWrapper);
+                container.appendChild(dayGroup);
             });
         }
 
-        function updateRack(rackId, datetime) {
-            console.log(`Rack ${rackId} updated to ${datetime}`);
+        // Returns all rack items in DOM order as [{rackId, datetime, status}]
+        function collectRackDOMState() {
+            const items = [];
+            document.querySelectorAll('.rack-item').forEach(item => {
+                const rackId = parseInt(item.dataset.rackId);
+                const dtInput = item.querySelector('input[type="datetime-local"]');
+                const statusSel = item.querySelector('select');
+                const drugs = JSON.parse(item.dataset.drugs || '[]');
+                items.push({
+                    rackId,
+                    datetime: dtInput ? dtInput.value : '',   // "YYYY-MM-DDTHH:MM"
+                    status: statusSel ? statusSel.value : 'pending',
+                    drugs,
+                    dtInput,
+                    statusSel,
+                    el: item
+                });
+            });
+            // Sort by rackId so order is always 1-7 regardless of DOM grouping by day
+            items.sort((a, b) => a.rackId - b.rackId);
+            return items;
         }
 
-        function updateRackStatus(rackId, status) {
-            console.log(`Rack ${rackId} status updated to ${status}`);
+        function updateRack(rackId, newValue) {
+            const racks = collectRackDOMState();
+            const idx = racks.findIndex(r => r.rackId === rackId);
+            if (idx === -1) return;
+
+            const revert = () => { racks[idx].dtInput.value = ''; };
+
+            // Check previous rack datetime
+            if (idx > 0) {
+                const prev = racks[idx - 1];
+                if (prev.datetime && newValue && newValue < prev.datetime) {
+                    showToast(`Rack #${rackId} cannot be earlier than Rack #${prev.rackId}`, 'error');
+                    revert();
+                    return;
+                }
+            }
+
+            // Check next rack datetime
+            if (idx < racks.length - 1) {
+                const next = racks[idx + 1];
+                if (next.datetime && newValue && newValue > next.datetime) {
+                    showToast(`Rack #${rackId} cannot be later than Rack #${next.rackId}`, 'error');
+                    revert();
+                    return;
+                }
+            }
+        }
+
+        function updateRackStatus(rackId, newStatus) {
+            if (newStatus === 'pending') return; // Always safe to revert to pending
+
+            const racks = collectRackDOMState();
+            const idx = racks.findIndex(r => r.rackId === rackId);
+            if (idx === -1) return;
+
+            // Every rack BEFORE this one must already be dispensed or taken
+            for (let i = 0; i < idx; i++) {
+                if (racks[i].status === 'pending') {
+                    showToast(
+                        `Cannot mark Rack #${rackId} as ${newStatus} — Rack #${racks[i].rackId} is still pending`,
+                        'error'
+                    );
+                    // Revert select back to 'pending'
+                    racks[idx].statusSel.value = 'pending';
+                    return;
+                }
+            }
+        }
+
+        // Drug management
+        let currentRackId = null;
+        let currentDrugs = [];
+
+        function openDrugModal(rackId) {
+            currentRackId = rackId;
+            document.getElementById('modalRackId').textContent = rackId;
+            
+            // Get current drugs for this rack
+            const rackItem = document.querySelector(`[data-rack-id="${rackId}"]`);
+            if (rackItem && rackItem.dataset.drugs) {
+                currentDrugs = JSON.parse(rackItem.dataset.drugs);
+            } else {
+                currentDrugs = [];
+            }
+            
+            renderDrugsList();
+            document.getElementById('drugModal').style.display = 'flex';
+            document.getElementById('drugInput').focus();
+        }
+
+        function closeDrugModal() {
+            document.getElementById('drugModal').style.display = 'none';
+            document.getElementById('drugInput').value = '';
+            currentRackId = null;
+            currentDrugs = [];
+        }
+
+        function addDrug() {
+            const input = document.getElementById('drugInput');
+            const drug = input.value.trim();
+            
+            if (!drug) {
+                showToast('Please enter a drug name', 'info');
+                return;
+            }
+            
+            if (currentDrugs.includes(drug)) {
+                showToast('Drug already added', 'info');
+                return;
+            }
+            
+            currentDrugs.push(drug);
+            input.value = '';
+            renderDrugsList();
+            input.focus();
+        }
+
+        function removeDrug(index) {
+            currentDrugs.splice(index, 1);
+            renderDrugsList();
+        }
+
+        function renderDrugsList() {
+            const drugsList = document.getElementById('drugsList');
+            
+            if (currentDrugs.length === 0) {
+                drugsList.innerHTML = '<p style="color: var(--text-dim); text-align: center; margin: 0;">No drugs added yet</p>';
+                return;
+            }
+            
+            drugsList.innerHTML = currentDrugs.map((drug, index) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--surface); border-radius: var(--radius-xs); margin-bottom: 0.5rem; border: 1px solid var(--border);">
+                    <span style="font-weight: 600; color: var(--text);">${drug}</span>
+                    <button type="button" class="btn btn-danger-soft btn-sm" onclick="removeDrug(${index})">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function saveDrugs() {
+            if (!currentRackId) return;
+            
+            const rackId = currentRackId;
+            const rackItem = document.querySelector(`[data-rack-id="${rackId}"]`);
+            if (rackItem) {
+                rackItem.dataset.drugs = JSON.stringify(currentDrugs);
+            }
+            
+            closeDrugModal();
+            await saveSchedule();
+            showToast(`Drugs saved for Rack #${rackId}`, 'success');
         }
 
         function autoFillSchedule() {
@@ -1432,25 +1918,123 @@
             showToast('Schedule auto-filled with 4-hour spacing', 'success');
         }
 
-        async function saveSchedule(event) {
-            event.preventDefault();
-
-            const racks = [];
-            document.querySelectorAll('.rack-item').forEach((item, index) => {
-                const datetime = item.querySelector('input[type="datetime-local"]').value.replace('T', ' ');
-                const status = item.querySelector('select').value;
-                racks.push({
-                    rack_id: index + 1,
-                    datetime: datetime,
-                    status: status
-                });
+        function scheduleThreeTimesDaily() {
+            const inputs = document.querySelectorAll('input[type="datetime-local"]');
+            const times = ['06:30', '11:30', '18:30']; // 6:30am, 11:30am, 6:30pm
+            const today = new Date();
+            
+            inputs.forEach((input, index) => {
+                const daysOffset = Math.floor(index / 3);
+                const timeIndex = index % 3;
+                const date = new Date(today.getTime() + daysOffset * 24 * 3600 * 1000);
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const time = times[timeIndex];
+                
+                input.value = `${year}-${month}-${day}T${time}`;
             });
+
+            showToast('Schedule set to 3x daily (6:30am, 11:30am, 6:30pm)', 'success');
+        }
+
+        function scheduleTwiceDaily() {
+            const inputs = document.querySelectorAll('input[type="datetime-local"]');
+            const times = ['06:30', '18:30']; // 6:30am, 6:30pm
+            const today = new Date();
+            
+            inputs.forEach((input, index) => {
+                const daysOffset = Math.floor(index / 2);
+                const timeIndex = index % 2;
+                const date = new Date(today.getTime() + daysOffset * 24 * 3600 * 1000);
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const time = times[timeIndex];
+                
+                input.value = `${year}-${month}-${day}T${time}`;
+            });
+
+            showToast('Schedule set to 2x daily (6:30am, 6:30pm)', 'success');
+        }
+
+        function scheduleDaily() {
+            const inputs = document.querySelectorAll('input[type="datetime-local"]');
+            const time = '06:30'; // 6:30am
+            const today = new Date();
+            
+            inputs.forEach((input, index) => {
+                const daysOffset = index;
+                const date = new Date(today.getTime() + daysOffset * 24 * 3600 * 1000);
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                input.value = `${year}-${month}-${day}T${time}`;
+            });
+
+            showToast('Schedule set to daily at 6:30am', 'success');
+        }
+
+        async function saveSchedule(event) {
+            if (event) event.preventDefault();
+
+            const domRacks = collectRackDOMState();
+
+            // ── Frontend validation ──────────────────────────────────────────
+
+            // 1. All datetime inputs must be filled
+            for (const r of domRacks) {
+                if (!r.datetime) {
+                    showToast(`Rack #${r.rackId} is missing a schedule date/time`, 'error');
+                    return;
+                }
+            }
+
+            // 2. Datetimes must be in strictly ascending order
+            for (let i = 1; i < domRacks.length; i++) {
+                const prev = domRacks[i - 1];
+                const curr = domRacks[i];
+                if (curr.datetime < prev.datetime) {
+                    showToast(
+                        `Rack #${curr.rackId} (${curr.datetime.replace('T', ' ')}) must be after Rack #${prev.rackId} (${prev.datetime.replace('T', ' ')})`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+
+            // 3. Status must be sequential — no pending rack before a dispensed/taken rack
+            let seenPending = false;
+            for (const r of domRacks) {
+                if (r.status === 'pending') {
+                    seenPending = true;
+                } else if (seenPending && r.status !== 'pending') {
+                    // A dispensed/taken rack follows a pending one — that's a skip
+                    showToast(
+                        `Cannot set Rack #${r.rackId} to "${r.status}" — earlier racks are still pending`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+
+            // ── Build payload ────────────────────────────────────────────────
+            const racks = domRacks.map(r => ({
+                rack_id: r.rackId,
+                datetime: r.datetime.replace('T', ' '),
+                status: r.status,
+                drugs: r.drugs
+            }));
 
             const payload = {
                 patient_name: document.getElementById('patientName').value,
                 rotation_degree: parseInt(document.getElementById('rotationDegree').value),
                 rack_warning_threshold: parseInt(document.getElementById('rackThreshold').value),
-                racks: racks
+                racks
             };
 
             try {
@@ -1503,6 +2087,13 @@
             }
         }
 
+        function toggleLogDrugs(logId) {
+            const detail = document.getElementById(`log-drugs-${logId}`);
+            if (detail) {
+                detail.style.display = detail.style.display === 'none' ? 'flex' : 'none';
+            }
+        }
+
         async function loadLogs() {
             try {
                 const response = await fetch('/api/dispense-logs');
@@ -1512,13 +2103,25 @@
                 if (data.logs && data.logs.length > 0) {
                     container.innerHTML = data.logs.map(log => `
                         <div class="log-item ${log.status}">
-                            <div class="log-time">
-                                ${formatIsoToReadable(log.timestamp)}
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <div class="log-time">
+                                        ${formatIsoToReadable(log.timestamp)}
+                                    </div>
+                                    <div class="log-message">
+                                        ${log.patient_name} \u2014 Rack #${log.rack_id} (${log.rotation_degree}&deg;)
+                                    </div>
+                                    <div class="log-notes">${log.notes || ''}</div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleLogDrugs(${log.id})" title="View dispensed drugs" style="padding: 0.25rem 0.5rem;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                             </div>
-                            <div class="log-message">
-                                ${log.patient_name} \u2014 Rack #${log.rack_id} (${log.rotation_degree}&deg;)
+                            <div id="log-drugs-${log.id}" class="log-drugs" style="display: none;">
+                                ${(log.drugs && log.drugs.length > 0)
+                                    ? log.drugs.map(drug => `<span class="log-drug-tag">${drug}</span>`).join('')
+                                    : '<span class="log-drug-empty">No drugs recorded for this dispense</span>'}
                             </div>
-                            <div class="log-notes">${log.notes || ''}</div>
                         </div>
                     `).join('');
                 } else {

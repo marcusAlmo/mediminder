@@ -118,7 +118,8 @@ def init_default_racks() -> List[Dict[str, Any]]:
             "datetime": f"{target_date} {t_str}",
             "iso_datetime": f"{target_date}T{t_str}:00+08:00",
             "status": "pending",
-            "notes": f"Rack {i} Medication Dose"
+            "notes": f"Rack {i} Medication Dose",
+            "drugs": []
         })
     return racks
 
@@ -128,6 +129,8 @@ def init_default_racks() -> List[Dict[str, Any]]:
 # ==========================================
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DATA_FILE = os.path.join(DATA_DIR, "data.json")
+DISPENSE_LOG_FILE = os.path.join(DATA_DIR, "dispense_logs.txt")
+INTAKE_LOG_FILE = os.path.join(DATA_DIR, "intake_logs.txt")
 
 
 def ensure_data_dir() -> None:
@@ -136,7 +139,7 @@ def ensure_data_dir() -> None:
 
 
 def load_data() -> Dict[str, Any]:
-    """Load dispenser configuration and logs from a single JSON text file."""
+    """Load dispenser configuration from JSON file."""
     ensure_data_dir()
     if os.path.exists(DATA_FILE):
         try:
@@ -148,13 +151,29 @@ def load_data() -> Dict[str, Any]:
     return {}
 
 
+def load_logs_from_file(log_file: str) -> List[Dict[str, Any]]:
+    """Load logs from a text file (one JSON object per line)."""
+    logs = []
+    if os.path.exists(log_file):
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            logs.append(json.loads(line))
+                        except json.JSONDecodeError as e:
+                            app_logger.warning(f"Skipping malformed log line in {log_file}: {e}")
+        except IOError as e:
+            app_logger.error(f"Could not read {log_file}: {e}")
+    return logs
+
+
 def save_data() -> None:
-    """Persist dispenser configuration and logs to a single JSON text file."""
+    """Persist dispenser configuration to JSON file."""
     ensure_data_dir()
     payload = {
         "config": dispenser_config,
-        "dispense_logs": dispense_logs,
-        "intake_logs": intake_logs,
     }
     temp_file = DATA_FILE + ".tmp"
     try:
@@ -163,6 +182,26 @@ def save_data() -> None:
         os.replace(temp_file, DATA_FILE)
     except IOError as e:
         app_logger.error(f"Could not save {DATA_FILE}: {e}")
+
+
+def append_log(log_file: str, log_entry: Dict[str, Any]) -> None:
+    """Append a single log entry to a text file (one JSON object per line)."""
+    ensure_data_dir()
+    try:
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+    except IOError as e:
+        app_logger.error(f"Could not append to {log_file}: {e}")
+
+
+def clear_log_file(log_file: str) -> None:
+    """Clear all contents of a log file."""
+    ensure_data_dir()
+    try:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write("")
+    except IOError as e:
+        app_logger.error(f"Could not clear {log_file}: {e}")
 
 
 def migrate_default_data(data: Dict[str, Any]) -> None:
@@ -178,17 +217,15 @@ def migrate_default_data(data: Dict[str, Any]) -> None:
     cfg.setdefault("dispense_time", ["08:00", "12:30", "18:00", "21:00"])
     cfg.setdefault("last_updated_at", "")
     data["config"] = cfg
-    data.setdefault("dispense_logs", [])
-    data.setdefault("intake_logs", [])
 
 
-# Load data from text file or initialize defaults
+# Load data from text files or initialize defaults
 _data = load_data()
 migrate_default_data(_data)
 
 dispenser_config: Dict[str, Any] = _data["config"]
-dispense_logs: List[Dict[str, Any]] = _data["dispense_logs"]
-intake_logs: List[Dict[str, Any]] = _data["intake_logs"]
+dispense_logs: List[Dict[str, Any]] = load_logs_from_file(DISPENSE_LOG_FILE)
+intake_logs: List[Dict[str, Any]] = load_logs_from_file(INTAKE_LOG_FILE)
 
 # In-memory IoT sync state (last time the ESP32 fetched config)
 iot_last_fetch_at: str | None = None
@@ -305,16 +342,26 @@ def get_dispense_schedule():
 
     current_rack = dispenser_config.get("current_rack", 1)
 
-    # Compute remaining pending storage racks (default max: 7)
+    # Compute available storage racks (dispensed or taken)
+    available_racks = [r for r in racks if r.get("status") in ["dispensed", "taken"]]
     pending_racks = [r for r in racks if r.get("status") == "pending"]
-    rack_count = len(pending_racks)
+    rack_count = len(available_racks)
     dispenser_config["rack_count"] = rack_count
     threshold = dispenser_config.get("rack_warning_threshold", 3)
 
     # Determine next upcoming rack in sequence (1 to 7)
-    next_rack_obj = next((r for r in racks if r["rack_id"] == current_rack and r.get("status") == "pending"), None)
-    if not next_rack_obj and pending_racks:
-        next_rack_obj = pending_racks[0]
+    # Find the first pending rack whose datetime is in the future
+    now = datetime.now(PHT)
+    pending_racks_sorted = sorted(pending_racks, key=lambda r: r["rack_id"])
+    next_rack_obj = next(
+        (r for r in pending_racks_sorted
+         if r.get("status") == "pending" and datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT) >= now),
+        None
+    )
+    if not next_rack_obj and pending_racks_sorted:
+        # If all pending racks are in the past, use the first pending rack
+        next_rack_obj = pending_racks_sorted[0]
+    if next_rack_obj:
         dispenser_config["current_rack"] = next_rack_obj["rack_id"]
 
     response_data = {
@@ -398,14 +445,24 @@ def submit_dispensation():
     except (ValueError, TypeError):
         slot = current_rack
 
+    # Security: IoT can only dispense the current rack (sequential rotation)
+    # It cannot jump from rack 1 to rack 4, for example
+    if slot != current_rack:
+        return jsonify({
+            "status": "error",
+            "message": f"Dispense must be in sequence. Expected rack {current_rack}, got rack {slot}."
+        }), 400
+
     notes = sanitize_string(data.get("notes", f"Rack #{slot} dispensed successfully via ESP32"), 200)
 
     # Mark the specific rack in the sequence as dispensed
     racks = dispenser_config.get("racks", [])
+    rack_drugs = []
     for r in racks:
         if r["rack_id"] == slot:
             r["status"] = "dispensed"
             r["dispensed_at"] = timestamp
+            rack_drugs = r.get("drugs", [])
             break
 
     # Advance current_rack pointer to the next pending rack in sequence
@@ -417,8 +474,8 @@ def submit_dispensation():
         any_pending = [r for r in racks if r.get("status") == "pending"]
         dispenser_config["current_rack"] = any_pending[0]["rack_id"] if any_pending else None
 
-    # Count remaining available storage racks
-    rack_count = len([r for r in racks if r.get("status") == "pending"])
+    # Count available storage racks (dispensed or taken)
+    rack_count = len([r for r in racks if r.get("status") in ["dispensed", "taken"]])
     dispenser_config["rack_count"] = rack_count
     threshold = dispenser_config["rack_warning_threshold"]
     rack_warning = rack_count <= threshold
@@ -433,12 +490,14 @@ def submit_dispensation():
         "rack_id": slot,
         "slot": slot,
         "notes": notes,
+        "drugs": rack_drugs,
         "next_rack": dispenser_config.get("current_rack"),
         "rack_count_after": rack_count,
         "rack_warning": rack_warning,
     }
 
     dispense_logs.append(log_entry)
+    append_log(DISPENSE_LOG_FILE, log_entry)
     save_data()
 
     request_id = get_request_id()
@@ -512,6 +571,7 @@ def submit_intake():
     }
 
     intake_logs.append(intake_entry)
+    append_log(INTAKE_LOG_FILE, intake_entry)
     save_data()
 
     request_id = get_request_id()
@@ -571,10 +631,21 @@ def update_dispense_schedule():
     if "current_rack" in data:
         try:
             cr = int(data["current_rack"])
-            if 1 <= cr <= 7:
-                dispenser_config["current_rack"] = cr
+            if not 1 <= cr <= 7:
+                return jsonify({"status": "error", "message": "current_rack must be between 1 and 7"}), 400
+            
+            # Security: current_rack can only advance one step at a time
+            # because the IoT only rotates one rack per dispense
+            current = dispenser_config.get("current_rack", 1)
+            if cr != current and cr != current + 1:
+                return jsonify({
+                    "status": "error",
+                    "message": f"current_rack can only advance by 1 at a time. Cannot jump from {current} to {cr}."
+                }), 400
+            
+            dispenser_config["current_rack"] = cr
         except (ValueError, TypeError):
-            pass
+            return jsonify({"status": "error", "message": "current_rack must be a valid integer"}), 400
 
     if "rack_warning_threshold" in data:
         try:
@@ -616,21 +687,70 @@ def update_dispense_schedule():
 
             # Sanitize status and notes
             status = sanitize_string(item.get("status", "pending"), 20)
-            if status not in ["pending", "dispensed"]:
+            if status not in ["pending", "dispensed", "taken"]:
                 status = "pending"
             
             notes = sanitize_string(item.get("notes", f"Rack {rack_id}"), 200)
+            
+            drugs_raw = item.get("drugs")
+            if isinstance(drugs_raw, list):
+                drugs = [str(d).strip() for d in drugs_raw if str(d).strip()]
+            else:
+                drugs = []
             
             updated_racks.append({
                 "rack_id": rack_id,
                 "datetime": dt_clean,
                 "iso_datetime": iso_dt,
                 "status": status,
-                "notes": notes
+                "notes": notes,
+                "drugs": drugs
             })
         
+        # Security: Validate rack IDs are sequential (1,2,3...7)
+        sorted_racks = sorted(updated_racks, key=lambda r: r["rack_id"])
+        expected_ids = list(range(1, len(sorted_racks) + 1))
+        actual_ids = [r["rack_id"] for r in sorted_racks]
+        if actual_ids != expected_ids:
+            return jsonify({
+                "status": "error",
+                "message": f"Rack IDs must be sequential. Expected {expected_ids}, got {actual_ids}"
+            }), 400
+        
+        # Security: Validate schedule times are in ascending order
+        # (subsequent racks must be at or after previous racks)
+        for i in range(1, len(sorted_racks)):
+            prev_dt = sorted_racks[i - 1]["datetime"]
+            curr_dt = sorted_racks[i]["datetime"]
+            if prev_dt and curr_dt and curr_dt < prev_dt:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Schedule times must be in ascending order. Rack {i + 1} ({curr_dt}) is before Rack {i} ({prev_dt})"
+                }), 400
+        
+        # Security: Validate status progression is sequential
+        # You cannot skip racks (e.g., mark rack 1 as pending, rack 2 as dispensed/taken, rack 3 as pending)
+        seen_taken = False
+        for i, rack in enumerate(sorted_racks):
+            if rack["status"] in ["dispensed", "taken"]:
+                seen_taken = True
+            elif rack["status"] == "pending":
+                # After a taken/dispensed rack, no earlier pending rack allowed
+                # Actually, allow this but ensure current_rack is the first pending
+                pass
+        
+        # Update current_rack to the first pending rack in sequence if it would skip
+        first_pending = next((r["rack_id"] for r in sorted_racks if r["status"] == "pending"), None)
+        if first_pending is not None:
+            current = dispenser_config.get("current_rack", 1)
+            # current_rack must be the first pending or the last completed + 1
+            expected_current = first_pending
+            if current > first_pending:
+                # Cannot skip past uncompleted pending racks
+                dispenser_config["current_rack"] = first_pending
+        
         dispenser_config["racks"] = updated_racks
-        dispenser_config["rack_count"] = len([r for r in updated_racks if r["status"] == "pending"])
+        dispenser_config["rack_count"] = len([r for r in updated_racks if r["status"] in ["dispensed", "taken"]])
         dispenser_config["dispense_time"] = [r["datetime"].split(" ")[-1] for r in updated_racks if "datetime" in r]
 
     elif "dispense_time" in data and isinstance(data["dispense_time"], list):
@@ -693,6 +813,7 @@ def get_intake_logs():
 def clear_dispense_logs():
     """Clear all dispensation logs (useful for testing)."""
     dispense_logs.clear()
+    clear_log_file(DISPENSE_LOG_FILE)
     save_data()
     return jsonify({
         "status": "success",
