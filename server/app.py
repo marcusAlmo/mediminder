@@ -657,7 +657,13 @@ def health_check():
 # ==========================================
 
 @app.route("/")
-def index():
+def landing():
+    """Render the landing page (hero, features carousel, rationale, CTA)."""
+    return render_template("landing.html")
+
+
+@app.route("/dashboard")
+def dashboard():
     """Render the web configuration and monitoring dashboard."""
     return render_template("dashboard.html")
 
@@ -675,7 +681,8 @@ if __name__ == "__main__":
     print("  GET  /api/dispense-logs     - View dispensation history")
     print("  GET  /api/intake-logs       - View patient intake history")
     print("  GET  /api/status            - Health check & system status")
-    print("  GET  /                      - Web Dashboard UI")
+    print("  GET  /                      - Landing Page (hero, features, rationale)")
+    print("  GET  /dashboard             - Web Dashboard UI")
     print("\nSecurity Features:")
     print("  ✓ Input validation and sanitization")
     print("  ✓ Rate limiting (placeholder - implement in production)")

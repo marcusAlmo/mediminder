@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Mediminder by SJNHS - Smart Medicine Dispenser System. Reliable, automated medication scheduling and dispensing.">
+    <meta name="theme-color" content="#3b82f6" id="metaTheme">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='80' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%233b82f6' width='180' height='180'/><text x='90' y='90' font-size='120' fill='white' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
+
+    <title>Mediminder by SJNHS — Smart Medicine Dispenser</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============ THEME TOKENS (shared with dashboard) ============ */
+        :root {
+            --primary: #3b82f6;
+            --primary-2: #06b6d4;
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-violet: #8b5cf6;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0b0f19;
+            --bg-grad: radial-gradient(1200px 600px at 80% -10%, rgba(59, 130, 246, 0.14), transparent 60%),
+                       radial-gradient(900px 500px at -10% 110%, rgba(6, 182, 212, 0.10), transparent 60%),
+                       linear-gradient(180deg, #0b0f19 0%, #0d1322 100%);
+            --surface: rgba(19, 27, 46, 0.72);
+            --surface-2: rgba(26, 36, 61, 0.55);
+            --surface-3: rgba(26, 36, 61, 0.35);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.14);
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --nav-bg: rgba(11, 15, 25, 0.78);
+            --input-bg: rgba(26, 36, 61, 0.6);
+            --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.35);
+            --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.4);
+            --hover-overlay: rgba(255, 255, 255, 0.04);
+            --hero-glow: radial-gradient(600px 300px at 50% 0%, rgba(59, 130, 246, 0.25), transparent 70%);
+        }
+
+        [data-theme="light"] {
+            --bg: #f4f6fb;
+            --bg-grad: radial-gradient(1200px 600px at 80% -10%, rgba(59, 130, 246, 0.10), transparent 60%),
+                       radial-gradient(900px 500px at -10% 110%, rgba(6, 182, 212, 0.08), transparent 60%),
+                       linear-gradient(180deg, #f4f6fb 0%, #eef2f9 100%);
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-2: rgba(248, 250, 252, 0.9);
+            --surface-3: rgba(241, 245, 249, 0.9);
+            --border: rgba(15, 23, 42, 0.10);
+            --border-strong: rgba(15, 23, 42, 0.16);
+            --text: #0f172a;
+            --text-muted: #475569;
+            --text-dim: #64748b;
+            --nav-bg: rgba(255, 255, 255, 0.82);
+            --input-bg: #ffffff;
+            --shadow-card: 0 8px 30px rgba(15, 23, 42, 0.08);
+            --shadow-md: 0 10px 40px rgba(15, 23, 42, 0.12);
+            --hover-overlay: rgba(15, 23, 42, 0.03);
+            --hero-glow: radial-gradient(600px 300px at 50% 0%, rgba(59, 130, 246, 0.18), transparent 70%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+
+        body {
+            background: var(--bg-grad);
+            background-attachment: fixed;
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+        a { color: var(--primary); text-decoration: none; transition: color var(--transition); }
+        a:hover { color: var(--primary-2); }
+
+        /* ============ NAVBAR ============ */
+        .navbar {
+            background: var(--nav-bg);
+            backdrop-filter: saturate(180%) blur(16px);
+            -webkit-backdrop-filter: saturate(180%) blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.85rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+        .navbar .container-fluid { max-width: 1280px; padding: 0 1.25rem; }
+
+        .navbar-brand {
+            font-size: 1.35rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+        .navbar-brand:hover { color: var(--text); }
+
+        .brand-mark {
+            width: 38px; height: 38px;
+            border-radius: 11px;
+            background: var(--primary-gradient);
+            display: grid; place-items: center;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
+            flex-shrink: 0;
+        }
+        .brand-text {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .brand-sub {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-top: -2px;
+        }
+
+        .nav-actions { display: flex; align-items: center; gap: 0.6rem; }
+
+        .nav-link-btn {
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: var(--font);
+        }
+        .nav-link-btn:hover { color: var(--text); background: var(--hover-overlay); }
+
+        .theme-toggle {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            display: grid; place-items: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all var(--transition);
+        }
+        .theme-toggle:hover { border-color: var(--border-strong); background: var(--hover-overlay); transform: translateY(-1px); }
+        .theme-toggle .icon-sun { display: none; }
+        .theme-toggle .icon-moon { display: block; }
+        [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+        [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+        /* ============ HERO ============ */
+        .hero {
+            position: relative;
+            padding: 4.5rem 1.25rem 3rem;
+            text-align: center;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--hero-glow);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 1rem;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: color-mix(in srgb, var(--primary) 12%, transparent);
+            color: var(--primary);
+            border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+            margin-bottom: 1.5rem;
+        }
+        .hero-badge .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--accent-emerald);
+            box-shadow: 0 0 8px var(--accent-emerald);
+        }
+
+        .hero-title {
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.1rem;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero-title .grad {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2.2vw, 1.2rem);
+            color: var(--text-muted);
+            max-width: 640px;
+            margin: 0 auto 2rem;
+            line-height: 1.6;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 0.85rem 1.8rem;
+            font-weight: 700;
+            border-radius: 12px;
+            transition: all var(--transition);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            justify-content: center;
+            font-size: 1rem;
+            text-decoration: none;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(59, 130, 246, 0.4);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
+            padding: 0.85rem 1.8rem;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            justify-content: center;
+            font-size: 1rem;
+            text-decoration: none;
+        }
+        .btn-secondary:hover {
+            background: var(--hover-overlay);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 2.5rem;
+            justify-content: center;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+        }
+        .hero-stat { text-align: center; }
+        .hero-stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+        .hero-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        /* ============ SECTION SHELL ============ */
+        .section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 1.25rem;
+        }
+        .section-head { text-align: center; margin-bottom: 2.5rem; }
+        .section-eyebrow {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.6rem;
+        }
+        .section-title {
+            font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.7rem;
+        }
+        .section-subtitle {
+            color: var(--text-muted);
+            max-width: 580px;
+            margin: 0 auto;
+            font-size: 1.02rem;
+            line-height: 1.6;
+        }
+
+        /* ============ FEATURES CAROUSEL ============ */
+        .features-carousel-wrap {
+            position: relative;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            background: var(--surface);
+        }
+
+        .carousel-item {
+            min-height: 380px;
+        }
+
+        .feature-slide {
+            display: flex;
+            align-items: center;
+            min-height: 380px;
+            padding: 2.5rem 2.5rem;
+            gap: 2rem;
+            background: var(--surface);
+        }
+
+        .feature-icon-wrap {
+            flex-shrink: 0;
+            width: 130px;
+            height: 130px;
+            border-radius: 24px;
+            display: grid;
+            place-items: center;
+            font-size: 3.5rem;
+            color: #fff;
+            position: relative;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+        .feature-icon-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.25), transparent 60%);
+        }
+        .feature-icon-wrap.blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+        .feature-icon-wrap.emerald { background: linear-gradient(135deg, #10b981, #059669); }
+        .feature-icon-wrap.amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .feature-icon-wrap.violet { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+        .feature-icon-wrap.rose { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+
+        .feature-content { flex: 1; min-width: 0; }
+        .feature-eyebrow {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+        .feature-title {
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.7rem;
+        }
+        .feature-desc {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.65;
+            margin-bottom: 1rem;
+        }
+        .feature-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .feature-tag {
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 8%;
+            opacity: 0.7;
+            transition: opacity var(--transition);
+        }
+        .carousel-control-prev:hover,
+        .carousel-control-next:hover { opacity: 1; }
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: var(--surface);
+            border-radius: 50%;
+            padding: 1.4rem;
+            background-image: none;
+            position: relative;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .carousel-control-prev-icon::before,
+        .carousel-control-next-icon::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px; height: 12px;
+            border-top: 2.5px solid var(--text);
+            border-right: 2.5px solid var(--text);
+        }
+        .carousel-control-prev-icon::before { transform: translate(-30%, -50%) rotate(-135deg); }
+        .carousel-control-next-icon::before { transform: translate(-70%, -50%) rotate(45deg); }
+
+        .carousel-indicators {
+            margin-bottom: 0.8rem;
+            gap: 0.4rem;
+        }
+        .carousel-indicators [data-bs-target] {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            border: none;
+            opacity: 0.5;
+            transition: all var(--transition);
+        }
+        .carousel-indicators .active {
+            opacity: 1;
+            width: 26px;
+            border-radius: 999px;
+            background: var(--primary-gradient);
+        }
+
+        /* ============ RATIONALE ============ */
+        .rationale-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+        .rationale-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            transition: all var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .rationale-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+        .rationale-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-strong);
+            box-shadow: var(--shadow-md);
+        }
+        .rationale-card:hover::before { opacity: 1; }
+
+        .rationale-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: grid; place-items: center;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            background: color-mix(in srgb, var(--primary) 14%, transparent);
+            color: var(--primary);
+            border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
+        }
+        .rationale-card.emerald .rationale-icon {
+            background: color-mix(in srgb, var(--accent-emerald) 14%, transparent);
+            color: var(--accent-emerald);
+            border-color: color-mix(in srgb, var(--accent-emerald) 24%, transparent);
+        }
+        .rationale-card.amber .rationale-icon {
+            background: color-mix(in srgb, var(--accent-amber) 14%, transparent);
+            color: var(--accent-amber);
+            border-color: color-mix(in srgb, var(--accent-amber) 24%, transparent);
+        }
+        .rationale-card.violet .rationale-icon {
+            background: color-mix(in srgb, var(--accent-violet) 14%, transparent);
+            color: var(--accent-violet);
+            border-color: color-mix(in srgb, var(--accent-violet) 24%, transparent);
+        }
+        .rationale-card.rose .rationale-icon {
+            background: color-mix(in srgb, var(--accent-rose) 14%, transparent);
+            color: var(--accent-rose);
+            border-color: color-mix(in srgb, var(--accent-rose) 24%, transparent);
+        }
+
+        .rationale-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.01em;
+        }
+        .rationale-text {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .rationale-quote {
+            margin-top: 3rem;
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            position: relative;
+        }
+        .rationale-quote::before {
+            content: '"';
+            position: absolute;
+            top: -10px; left: 20px;
+            font-size: 5rem;
+            font-family: Georgia, serif;
+            color: var(--primary);
+            opacity: 0.25;
+            line-height: 1;
+        }
+        .rationale-quote p {
+            font-size: 1.15rem;
+            font-weight: 600;
+            line-height: 1.5;
+            max-width: 720px;
+            margin: 0 auto;
+            color: var(--text);
+        }
+        .rationale-quote cite {
+            display: block;
+            margin-top: 0.8rem;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-style: normal;
+        }
+
+        /* ============ FINAL CTA ============ */
+        .final-cta {
+            text-align: center;
+            padding: 4rem 1.25rem 5rem;
+            position: relative;
+        }
+        .final-cta-card {
+            max-width: 760px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 3rem 2rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        .final-cta-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+        }
+        .final-cta h2 {
+            font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.8rem;
+        }
+        .final-cta p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            margin-bottom: 1.75rem;
+            max-width: 520px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        /* ============ FOOTER ============ */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .footer p { margin: 0.3rem 0; font-size: 0.88rem; }
+        .footer .footer-dim { color: var(--text-dim); font-size: 0.78rem; }
+        .footer-links {
+            display: flex;
+            gap: 1.25rem;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+        .footer-links a:hover { color: var(--primary); }
+
+        /* ============ TOAST ============ */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+            width: min(92vw, 380px);
+        }
+        .toast {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem 1.1rem;
+            box-shadow: var(--shadow-md);
+            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            animation: toastIn 0.3s ease;
+            backdrop-filter: blur(12px);
+        }
+        .toast.success { border-left: 3px solid var(--accent-emerald); }
+        .toast.error { border-left: 3px solid var(--accent-rose); }
+        .toast.info { border-left: 3px solid var(--primary); }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 768px) {
+            .navbar .container-fluid { padding: 0 0.9rem; }
+            .navbar-brand { font-size: 1.15rem; }
+            .navbar-brand .brand-mark { width: 34px; height: 34px; font-size: 1rem; }
+            .brand-sub { display: none; }
+            .nav-link-btn { display: none; }
+
+            .hero { padding: 3rem 1rem 2rem; }
+            .hero-stats { gap: 1.5rem; margin-top: 2rem; }
+            .hero-stat-value { font-size: 1.4rem; }
+
+            .section { padding: 2.5rem 1rem; }
+
+            .feature-slide {
+                flex-direction: column;
+                text-align: center;
+                padding: 2rem 1.5rem;
+                min-height: auto;
+                gap: 1.25rem;
+            }
+            .carousel-item { min-height: auto; }
+            .feature-icon-wrap { width: 90px; height: 90px; font-size: 2.5rem; border-radius: 20px; }
+            .feature-tags { justify-content: center; }
+
+            .rationale-quote::before { font-size: 3.5rem; }
+            .final-cta-card { padding: 2rem 1.5rem; }
+        }
+
+        @media (max-width: 420px) {
+            .hero-cta { flex-direction: column; width: 100%; }
+            .hero-cta .btn-primary, .hero-cta .btn-secondary { width: 100%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/" aria-label="Mediminder home">
+                <span class="brand-mark">💊</span>
+                <span>
+                    <span class="brand-text">Mediminder</span>
+                    <span class="brand-sub">by SJNHS</span>
+                </span>
+            </a>
+            <div class="nav-actions">
+                <button class="nav-link-btn" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">Features</button>
+                <button class="nav-link-btn" onclick="document.getElementById('rationale').scrollIntoView({behavior:'smooth'})">Why</button>
+                <a class="nav-link-btn" href="/dashboard">Dashboard</a>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode" title="Toggle theme">
+                    <i class="bi bi-sun icon-sun"></i>
+                    <i class="bi bi-moon icon-moon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero">
+        <span class="hero-badge"><span class="dot"></span> IoT-Powered Medication Management</span>
+        <h1 class="hero-title">
+            Never miss a dose.<br>
+            <span class="grad">Smart dispensing, on schedule.</span>
+        </h1>
+        <p class="hero-subtitle">
+            Mediminder is a 7-rack automated medicine dispenser that schedules, rotates, and logs
+            each dose in real time — keeping patients safe and caregivers informed.
+        </p>
+        <div class="hero-cta">
+            <a class="btn-primary" href="/dashboard">
+                <i class="bi bi-rocket-takeoff"></i> Get Started
+            </a>
+            <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
+                <i class="bi bi-stars"></i> Explore Features
+            </button>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-value">7</div>
+                <div class="hero-stat-label">Sequential Racks</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">24/7</div>
+                <div class="hero-stat-label">Always On</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">PHT</div>
+                <div class="hero-stat-label">RTC Synced</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">PWA</div>
+                <div class="hero-stat-label">Installable</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Carousel -->
+    <section class="section" id="features">
+        <div class="section-head">
+            <div class="section-eyebrow">Features</div>
+            <h2 class="section-title">Everything the dispenser can do</h2>
+            <p class="section-subtitle">
+                From precise stepper rotation to real-time logging — explore the capabilities that make Mediminder reliable.
+            </p>
+        </div>
+
+        <div id="featuresCarousel" class="carousel slide features-carousel-wrap" data-bs-ride="carousel" data-bs-interval="5000">
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#featuresCarousel" data-bs-slide-to="0" class="active" aria-label="Feature 1"></button>
+                <button type="button" data-bs-target="#featuresCarousel" data-bs-slide-to="1" aria-label="Feature 2"></button>
+                <button type="button" data-bs-target="#featuresCarousel" data-bs-slide-to="2" aria-label="Feature 3"></button>
+                <button type="button" data-bs-target="#featuresCarousel" data-bs-slide-to="3" aria-label="Feature 4"></button>
+                <button type="button" data-bs-target="#featuresCarousel" data-bs-slide-to="4" aria-label="Feature 5"></button>
+            </div>
+
+            <div class="carousel-inner">
+                <!-- Slide 1 -->
+                <div class="carousel-item active">
+                    <div class="feature-slide">
+                        <div class="feature-icon-wrap blue"><i class="bi bi-calendar2-week"></i></div>
+                        <div class="feature-content">
+                            <div class="feature-eyebrow">Scheduling</div>
+                            <h3 class="feature-title">7-Rack Sequential Dispensing</h3>
+                            <p class="feature-desc">
+                                Configure up to 7 medication racks with date- and time-specific schedules.
+                                The system automatically advances to the next pending rack after each dispense.
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">Date + Time</span>
+                                <span class="feature-tag">Auto-advance</span>
+                                <span class="feature-tag">Pending / Dispensed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 2 -->
+                <div class="carousel-item">
+                    <div class="feature-slide">
+                        <div class="feature-icon-wrap emerald"><i class="bi bi-cpu"></i></div>
+                        <div class="feature-content">
+                            <div class="feature-eyebrow">Hardware</div>
+                            <h3 class="feature-title">Precise Stepper Rotation</h3>
+                            <p class="feature-desc">
+                                Each rack rotates by a configurable degree (default 52°) to align the correct
+                                compartment with the dispensing tray — driven by an ESP32-controlled stepper motor.
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">ESP32</span>
+                                <span class="feature-tag">Stepper Motor</span>
+                                <span class="feature-tag">1°–360°</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 3 -->
+                <div class="carousel-item">
+                    <div class="feature-slide">
+                        <div class="feature-icon-wrap amber"><i class="bi bi-clock-history"></i></div>
+                        <div class="feature-content">
+                            <div class="feature-eyebrow">Timekeeping</div>
+                            <h3 class="feature-title">Real-Time Clock Sync (PHT)</h3>
+                            <p class="feature-desc">
+                                The server broadcasts Philippine Standard Time (UTC+8) to the ESP32's RTC,
+                                ensuring every dose is dispensed at the exact scheduled moment — even after power loss.
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">PHT / UTC+8</span>
+                                <span class="feature-tag">RTC Sync</span>
+                                <span class="feature-tag">ISO 8601</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 4 -->
+                <div class="carousel-item">
+                    <div class="feature-slide">
+                        <div class="feature-icon-wrap violet"><i class="bi bi-clipboard-data"></i></div>
+                        <div class="feature-content">
+                            <div class="feature-eyebrow">Monitoring</div>
+                            <h3 class="feature-title">Dispense &amp; Intake Logging</h3>
+                            <p class="feature-desc">
+                                Every dispense event and patient intake (drawer-open via sonar) is timestamped
+                                and logged — giving caregivers a full audit trail of medication adherence.
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">Event Logs</span>
+                                <span class="feature-tag">Sonar Intake</span>
+                                <span class="feature-tag">Audit Trail</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 5 -->
+                <div class="carousel-item">
+                    <div class="feature-slide">
+                        <div class="feature-icon-wrap rose"><i class="bi bi-shield-check"></i></div>
+                        <div class="feature-content">
+                            <div class="feature-eyebrow">Safety</div>
+                            <h3 class="feature-title">Low-Rack Warnings &amp; PWA</h3>
+                            <p class="feature-desc">
+                                Get alerted when remaining racks fall below a configurable threshold, and install
+                                Mediminder as a Progressive Web App for offline-capable access from any device.
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">Threshold Alerts</span>
+                                <span class="feature-tag">Offline Support</span>
+                                <span class="feature-tag">Installable</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="carousel-control-prev" type="button" data-bs-target="#featuresCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#featuresCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Rationale -->
+    <section class="section" id="rationale">
+        <div class="section-head">
+            <div class="section-eyebrow">Why Mediminder</div>
+            <h2 class="section-title">Built for real adherence challenges</h2>
+            <p class="section-subtitle">
+                Medication non-adherence is a leading cause of treatment failure, especially among elderly
+                patients and those with complex regimens. Mediminder addresses this head-on.
+            </p>
+        </div>
+
+        <div class="rationale-grid">
+            <div class="rationale-card">
+                <div class="rationale-icon"><i class="bi bi-alarm"></i></div>
+                <h3 class="rationale-title">Forgotten Doses</h3>
+                <p class="rationale-text">
+                    Up to 50% of patients miss scheduled doses. Automated, time-stamped dispensing eliminates
+                    forgetfulness as a failure mode.
+                </p>
+            </div>
+            <div class="rationale-card emerald">
+                <div class="rationale-icon"><i class="bi bi-people"></i></div>
+                <h3 class="rationale-title">Caregiver Visibility</h3>
+                <p class="rationale-text">
+                    Remote caregivers can verify each dose was dispensed and retrieved — no guessing,
+                    no phone calls, just a live log.
+                </p>
+            </div>
+            <div class="rationale-card amber">
+                <div class="rationale-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                <h3 class="rationale-title">Refill Awareness</h3>
+                <p class="rationale-text">
+                    Low-rack warnings notify caregivers before the dispenser runs empty, so refills happen
+                    on time, every time.
+                </p>
+            </div>
+            <div class="rationale-card violet">
+                <div class="rationale-icon"><i class="bi bi-bar-chart-line"></i></div>
+                <h3 class="rationale-title">Adherence Tracking</h3>
+                <p class="rationale-text">
+                    A complete history of dispense and intake events makes it easy to spot patterns and
+                    share data with healthcare providers.
+                </p>
+            </div>
+            <div class="rationale-card rose">
+                <div class="rationale-icon"><i class="bi bi-gear-wide-connected"></i></div>
+                <h3 class="rationale-title">Hardware-Software Sync</h3>
+                <p class="rationale-text">
+                    The ESP32 RTC stays synced to Philippine Standard Time, so the physical dispenser and
+                    the web dashboard always agree.
+                </p>
+            </div>
+            <div class="rationale-card">
+                <div class="rationale-icon"><i class="bi bi-phone"></i></div>
+                <h3 class="rationale-title">Accessible Anywhere</h3>
+                <p class="rationale-text">
+                    As an installable PWA with offline support, Mediminder works on any phone or desktop —
+                    no app store required.
+                </p>
+            </div>
+        </div>
+
+        <div class="rationale-quote">
+            <p>
+                "Medication adherence is the key to treatment success. By automating dispensing and
+                providing real-time visibility, Mediminder turns a daily challenge into reliable care."
+            </p>
+            <cite>— Mediminder by SJNHS, Smart Medicine Dispenser System</cite>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final-cta">
+        <div class="final-cta-card">
+            <h2>Ready to take control of medication schedules?</h2>
+            <p>
+                Open the dashboard to configure racks, set dispensing times, and monitor live status
+                from your ESP32-connected dispenser.
+            </p>
+            <a class="btn-primary" href="/dashboard">
+                <i class="bi bi-rocket-takeoff"></i> Get Started
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/static/manifest.json" target="_blank">PWA Manifest</a>
+        </div>
+        <p><strong>Mediminder by SJNHS</strong></p>
+        <p>Smart Medicine Dispenser System</p>
+        <p class="footer-dim">Developed with ❤️ for better healthcare management</p>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        /* ============ THEME (shared logic with dashboard) ============ */
+        const THEME_KEY = 'mediminder-theme';
+        const metaTheme = document.getElementById('metaTheme');
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            metaTheme.setAttribute('content', theme === 'light' ? '#f4f6fb' : '#0b0f19');
+            try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+        }
+
+        function initTheme() {
+            let saved = null;
+            try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+            const theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            applyTheme(theme);
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            applyTheme(current === 'light' ? 'dark' : 'light');
+        });
+
+        initTheme();
+
+        /* ============ SERVICE WORKER ============ */
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(() => console.log('✓ Service Worker registered'))
+                .catch(err => console.log('✗ Service Worker registration failed:', err));
+        }
+
+        /* ============ CAROUSEL PAUSE ON HOVER (accessibility) ============ */
+        const carouselEl = document.getElementById('featuresCarousel');
+        if (carouselEl) {
+            const bsCarousel = bootstrap.Carousel.getOrCreateInstance(carouselEl, { ride: 'carousel', interval: 5000, pause: 'hover' });
+            // Pause when tab/window hidden to save resources
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) bsCarousel.pause();
+                else bsCarousel.cycle();
+            });
+        }
+    </script>
+</body>
+</html>
