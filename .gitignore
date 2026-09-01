@@ -6,3 +6,6 @@ instance/
 .env
 .venv/
 venv/
+server/logs/
+*.log
+*.log.*
