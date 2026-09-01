@@ -38,6 +38,16 @@
         <!-- Notification Banner -->
         <div id="alert-banner" class="alert-banner hidden"></div>
 
+        <!-- Sync Loader Overlay -->
+        <div id="sync-loader" class="sync-loader hidden">
+            <div class="sync-loader-card">
+                <div class="spinner"></div>
+                <p id="sync-loader-message" class="sync-loader-message">Saving configuration...</p>
+                <p id="sync-loader-attempts" class="sync-loader-attempts"></p>
+                <button type="button" class="btn btn-secondary" id="sync-loader-cancel" onclick="cancelSyncPoll()">Cancel</button>
+            </div>
+        </div>
+
         <!-- Main Content Grid -->
         <main class="dashboard-grid">
             <!-- Left Column: Configuration -->
@@ -234,6 +244,10 @@
     <script>
         let currentRacks = [];
         let activeCurrentRack = 1;
+        let syncPollTimer = null;
+        let syncAttempts = 0;
+        const MAX_SYNC_ATTEMPTS = 20;
+        const SYNC_POLL_INTERVAL_MS = 2000;
 
         // Front-end logger with timestamp, levels, and debug mode
         class Logger {
@@ -302,6 +316,65 @@
             banner.className = `alert-banner ${isError ? 'error' : 'success'}`;
             banner.classList.remove('hidden');
             setTimeout(() => banner.classList.add('hidden'), 4000);
+        }
+
+        function showSyncLoader(message) {
+            document.getElementById('sync-loader-message').innerText = message;
+            document.getElementById('sync-loader-attempts').innerText = '';
+            document.getElementById('sync-loader').classList.remove('hidden');
+        }
+
+        function setSyncLoaderMessage(message, attempts = 0) {
+            document.getElementById('sync-loader-message').innerText = message;
+            document.getElementById('sync-loader-attempts').innerText =
+                attempts > 0 ? `Attempt ${attempts} of ${MAX_SYNC_ATTEMPTS}` : '';
+        }
+
+        function hideSyncLoader() {
+            document.getElementById('sync-loader').classList.add('hidden');
+        }
+
+        function cancelSyncPoll() {
+            if (syncPollTimer) {
+                clearTimeout(syncPollTimer);
+                syncPollTimer = null;
+            }
+            hideSyncLoader();
+            logger.info('SYNC', 'Sync polling cancelled by user');
+        }
+
+        async function pollSyncStatus() {
+            syncAttempts++;
+            setSyncLoaderMessage('Waiting for IoT to fetch updated configuration...', syncAttempts);
+            logger.info('SYNC', `Polling sync status (attempt ${syncAttempts}/${MAX_SYNC_ATTEMPTS})`);
+
+            try {
+                const res = await fetch('/api/iot-sync-status');
+                const data = await res.json();
+                if (data.synced) {
+                    clearTimeout(syncPollTimer);
+                    syncPollTimer = null;
+                    hideSyncLoader();
+                    showAlert('✅ Synced successfully — IoT has fetched the updated schedule.');
+                    logger.info('SYNC', 'IoT successfully fetched updated configuration');
+                    fetchCurrentConfig();
+                    fetchLogs();
+                    return;
+                }
+            } catch (err) {
+                logger.warn('SYNC', `Sync status poll failed: ${err.message}`);
+            }
+
+            if (syncAttempts >= MAX_SYNC_ATTEMPTS) {
+                clearTimeout(syncPollTimer);
+                syncPollTimer = null;
+                hideSyncLoader();
+                showAlert('❌ IoT did not fetch the updated schedule in time. It will sync on its next poll.', true);
+                logger.error('SYNC', 'Max sync attempts reached without IoT fetch');
+                return;
+            }
+
+            syncPollTimer = setTimeout(pollSyncStatus, SYNC_POLL_INTERVAL_MS);
         }
 
         function setDegree(val) {
@@ -492,11 +565,11 @@
 
             const outputBox = document.getElementById('api-output-code');
             const statusBox = document.getElementById('output-status');
-            statusBox.innerText = 'Saving & Syncing 7-Rack schedule...';
-            statusBox.className = 'output-status loading';
+            showSyncLoader('Saving configuration...');
 
+            let start;
             try {
-                const start = performance.now();
+                start = performance.now();
                 const res = await fetch('/api/dispense-schedule', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -514,9 +587,12 @@
                     statusBox.innerText = `HTTP ${res.status} OK - Saved (${duration}ms)`;
                     statusBox.className = 'output-status success';
                     outputBox.innerText = JSON.stringify(result, null, 2);
-                    showAlert("✅ 7-Rack schedule saved & synced! ESP32 can now fetch the updated sequence.");
-                    fetchCurrentConfig();
+                    // Start watching for the IoT to fetch the new config
+                    syncAttempts = 0;
+                    setSyncLoaderMessage('Configuration saved. Waiting for IoT to fetch...', 0);
+                    pollSyncStatus();
                 } else {
+                    hideSyncLoader();
                     logger.warn('API', `POST /api/dispense-schedule returned HTTP ${res.status}: ${result.message}`);
                     statusBox.innerText = `HTTP ${res.status} Error`;
                     statusBox.className = 'output-status error';
@@ -524,7 +600,8 @@
                     showAlert("❌ Error: " + result.message, true);
                 }
             } catch (err) {
-                const duration = Math.round(performance.now() - start);
+                hideSyncLoader();
+                const duration = start ? Math.round(performance.now() - start) : 0;
                 logger.error('API', `POST /api/dispense-schedule failed after ${duration}ms: ${err.message}`);
                 statusBox.innerText = 'Network Error';
                 statusBox.className = 'output-status error';
@@ -542,7 +619,7 @@
 
             try {
                 const start = performance.now();
-                const res = await fetch('/api/dispense');
+                const res = await fetch('/api/dispense?device=esp32');
                 const duration = Math.round(performance.now() - start);
                 const data = await res.json();
 

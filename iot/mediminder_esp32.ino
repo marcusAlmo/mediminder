@@ -537,7 +537,7 @@ void pollScheduleFromApi() {
   }
 
   HTTPClient http;
-  String url = String(API_BASE_URL) + API_GET_PATH;
+  String url = String(API_BASE_URL) + API_GET_PATH + "?device=esp32";
   int code = -1;
   String body = "";
   bool success = false;
@@ -858,6 +858,7 @@ void runDispenseCycle(int rackId) {
 
   state = STATE_MED_READY;
   logInfo("STATE", "Entering MED_READY – External LED ON. Waiting for patient to open drawer.");
+  logPerf("DISPENSE", startMs);
 }
 
 // ============================================================================

@@ -176,6 +176,7 @@ def migrate_default_data(data: Dict[str, Any]) -> None:
     cfg.setdefault("rack_count", 7)
     cfg.setdefault("rack_warning_threshold", 3)
     cfg.setdefault("dispense_time", ["08:00", "12:30", "18:00", "21:00"])
+    cfg.setdefault("last_updated_at", "")
     data["config"] = cfg
     data.setdefault("dispense_logs", [])
     data.setdefault("intake_logs", [])
@@ -188,6 +189,9 @@ migrate_default_data(_data)
 dispenser_config: Dict[str, Any] = _data["config"]
 dispense_logs: List[Dict[str, Any]] = _data["dispense_logs"]
 intake_logs: List[Dict[str, Any]] = _data["intake_logs"]
+
+# In-memory IoT sync state (last time the ESP32 fetched config)
+iot_last_fetch_at: str | None = None
 
 # Persist default data on first run
 if not os.path.exists(DATA_FILE):
@@ -286,6 +290,12 @@ def get_dispense_schedule():
     and storage rack counts (default 7 racks).
     """
     rtc_time = get_rtc_current_time()
+
+    # Track the last time the physical ESP32 fetched the schedule
+    if request.args.get("device") == "esp32":
+        global iot_last_fetch_at
+        iot_last_fetch_at = rtc_time["iso"]
+        app_logger.info(f"[{get_request_id()}] [IOT FETCH] ESP32 polled schedule at {iot_last_fetch_at}")
 
     # Guarantee 7 storage racks by default
     racks = dispenser_config.get("racks", [])
@@ -637,8 +647,16 @@ def update_dispense_schedule():
     # Persist updated configuration to text file
     save_data()
 
+    # Mark config as updated and reset IoT sync state until the ESP32 re-fetches
+    global iot_last_fetch_at
+    now_pht = datetime.now(PHT).isoformat()
+    dispenser_config["last_updated_at"] = now_pht
+    iot_last_fetch_at = None
+    save_data()
+
     request_id = get_request_id()
     app_logger.info(f"[{request_id}] [POST /api/dispense-schedule] 7-Rack Schedule updated via Save & Sync")
+    app_logger.info(f"[{request_id}] [SYNC PENDING] Config updated at {now_pht}; waiting for ESP32 GET poll")
     app_logger.debug(f"[{request_id}] Patient Name: {dispenser_config['patient_name']}")
     app_logger.debug(f"[{request_id}] Active Next Rack: Rack #{dispenser_config.get('current_rack')}")
     app_logger.debug(f"[{request_id}] Rotation Degree: {dispenser_config['rotation_degree']}°")
@@ -699,6 +717,23 @@ def health_check():
         "rack_warning_threshold": threshold,
         "current_time": get_rtc_current_time()["formatted"],
         "current_timestamp_iso": get_rtc_current_time()["iso"]
+    }), 200
+
+
+@app.route("/api/iot-sync-status", methods=["GET"])
+def iot_sync_status():
+    """Return whether the ESP32 has fetched the latest configuration."""
+    last_updated_at = dispenser_config.get("last_updated_at", "")
+    synced = (
+        iot_last_fetch_at is not None and
+        last_updated_at and
+        iot_last_fetch_at >= last_updated_at
+    )
+    return jsonify({
+        "status": "success",
+        "last_updated_at": last_updated_at,
+        "iot_last_fetch_at": iot_last_fetch_at,
+        "synced": synced
     }), 200
 
 

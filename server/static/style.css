@@ -936,3 +936,64 @@ input[type="datetime-local"] {
 .method.post {
     color: var(--accent-emerald);
 }
+
+/* Sync Loader Overlay */
+.sync-loader {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+.sync-loader.hidden {
+    display: none;
+    opacity: 0;
+}
+
+.sync-loader-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 28px 36px;
+    text-align: center;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.36);
+    min-width: 280px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+    border-top-color: var(--accent-cyan);
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.sync-loader-message {
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 0 0 6px;
+}
+
+.sync-loader-attempts {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    margin: 0 0 18px;
+}
+
+#sync-loader-cancel {
+    min-width: 100px;
+}
