@@ -360,17 +360,31 @@ def get_dispense_schedule():
     # Find the first pending rack whose datetime is in the future
     now = datetime.now(PHT)
     pending_racks_sorted = sorted(pending_racks, key=lambda r: r["rack_id"])
+    
+    # First priority: Find next pending rack with future datetime
     next_rack_obj = next(
         (r for r in pending_racks_sorted
          if r.get("status") == "pending" and datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT) >= now),
         None
     )
+    
+    # Fallback: If all pending racks are in the past (offline scenario)
     if not next_rack_obj and pending_racks_sorted:
-        # If all pending racks are in the past, use the first pending rack
-        next_rack_obj = pending_racks_sorted[0]
+        # Find the most recently passed rack (closest to now)
+        past_racks = [r for r in pending_racks_sorted if r.get("status") == "pending"]
+        if past_racks:
+            next_rack_obj = max(past_racks, key=lambda r: datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT))
+            app_logger.warning(f"[{get_request_id()}] [OFFLINE SCENARIO] All pending racks are in the past. Using most recent: Rack #{next_rack_obj['rack_id']} (was due at {next_rack_obj['datetime']})")
+    
     if next_rack_obj:
         dispenser_config["current_rack"] = next_rack_obj["rack_id"]
 
+    # Check if we're in offline recovery scenario
+    is_offline_recovery = False
+    if next_rack_obj:
+        rack_time = datetime.strptime(next_rack_obj["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT)
+        is_offline_recovery = rack_time < now  # Rack time is in the past
+    
     response_data = {
         "status": "success",
         "patient_name": dispenser_config.get("patient_name", "Test Patient"),
@@ -383,6 +397,7 @@ def get_dispense_schedule():
         "next_rack_id": next_rack_obj["rack_id"] if next_rack_obj else None,
         "next_rack_datetime": next_rack_obj["datetime"] if next_rack_obj else None,
         "next_rack_iso": next_rack_obj["iso_datetime"] if next_rack_obj else None,
+        "offline_recovery": is_offline_recovery,  # Flag: true if ESP32 came back online after scheduled time passed
         "rack_count": rack_count,
         "rack_warning_threshold": threshold,
         "rack_warning": rack_count <= threshold,
