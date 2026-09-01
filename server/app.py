@@ -647,11 +647,9 @@ def update_dispense_schedule():
     # Persist updated configuration to text file
     save_data()
 
-    # Mark config as updated and reset IoT sync state until the ESP32 re-fetches
-    global iot_last_fetch_at
+    # Mark config as updated so the UI can tell when the ESP32 re-fetches
     now_pht = datetime.now(PHT).isoformat()
     dispenser_config["last_updated_at"] = now_pht
-    iot_last_fetch_at = None
     save_data()
 
     request_id = get_request_id()
@@ -722,18 +720,38 @@ def health_check():
 
 @app.route("/api/iot-sync-status", methods=["GET"])
 def iot_sync_status():
-    """Return whether the ESP32 has fetched the latest configuration."""
+    """Return whether the ESP32 has fetched the latest configuration and is still online."""
     last_updated_at = dispenser_config.get("last_updated_at", "")
     synced = (
         iot_last_fetch_at is not None and
         last_updated_at and
         iot_last_fetch_at >= last_updated_at
     )
+
+    iot_online = False
+    iot_last_seen_seconds_ago = None
+    if iot_last_fetch_at:
+        try:
+            last_fetch = datetime.fromisoformat(iot_last_fetch_at)
+            iot_last_seen_seconds_ago = int((datetime.now(PHT) - last_fetch).total_seconds())
+            iot_online = iot_last_seen_seconds_ago <= 30  # 2x the 15s poll interval
+        except ValueError:
+            iot_last_seen_seconds_ago = None
+
+    racks = dispenser_config.get("racks", [])
+    current_rack = dispenser_config.get("current_rack", 1)
+    next_rack_obj = next((r for r in racks if r["rack_id"] == current_rack and r.get("status") == "pending"), None)
+    next_dose = next_rack_obj["datetime"] if next_rack_obj else None
+
     return jsonify({
         "status": "success",
         "last_updated_at": last_updated_at,
         "iot_last_fetch_at": iot_last_fetch_at,
-        "synced": synced
+        "iot_last_seen_seconds_ago": iot_last_seen_seconds_ago,
+        "iot_online": iot_online,
+        "synced": synced,
+        "next_rack_id": next_rack_obj["rack_id"] if next_rack_obj else None,
+        "next_dose": next_dose
     }), 200
 
 

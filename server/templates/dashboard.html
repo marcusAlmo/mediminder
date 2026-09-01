@@ -1111,14 +1111,6 @@
                     document.getElementById('statPatient').textContent = data.patient_name;
                     document.getElementById('statNextRack').textContent = `Rack #${data.current_rack}`;
                     document.getElementById('statRacksLeft').textContent = data.rack_count;
-                    document.getElementById('statusMessage').textContent = `Connected to ESP32. Next dose: ${data.next_rack_datetime || 'N/A'}`;
-
-                    const espPill = document.getElementById('espStatusPill');
-                    espPill.classList.remove('offline');
-                    espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Online</span>`;
-                    const navPill = document.getElementById('statusPill');
-                    navPill.classList.remove('offline');
-                    navPill.innerHTML = `<span class="status-dot"></span><span class="pill-text">Online</span>`;
 
                     document.getElementById('patientName').value = data.patient_name;
                     document.getElementById('rotationDegree').value = data.rotation_degree;
@@ -1129,6 +1121,41 @@
             } catch (error) {
                 console.error('Error loading data:', error);
                 document.getElementById('statusMessage').innerHTML = '<strong>Offline Mode:</strong> Using cached data. Changes will sync when connection returns.';
+                const espPill = document.getElementById('espStatusPill');
+                espPill.classList.add('offline');
+                espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Offline</span>`;
+                const navPill = document.getElementById('statusPill');
+                navPill.classList.add('offline');
+                navPill.innerHTML = `<span class="status-dot"></span><span class="pill-text">Offline</span>`;
+            }
+        }
+
+        async function checkEsp32Status() {
+            try {
+                const response = await fetch('/api/iot-sync-status');
+                const data = await response.json();
+                const espPill = document.getElementById('espStatusPill');
+                const navPill = document.getElementById('statusPill');
+
+                if (data.iot_online) {
+                    document.getElementById('statusMessage').innerHTML =
+                        `Connected to ESP32. Last seen <strong>${data.iot_last_seen_seconds_ago}s</strong> ago. Next dose: <strong>${data.next_dose || 'N/A'}</strong>`;
+                    espPill.classList.remove('offline');
+                    espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Online</span>`;
+                    navPill.classList.remove('offline');
+                    navPill.innerHTML = `<span class="status-dot"></span><span class="pill-text">Online</span>`;
+                } else {
+                    document.getElementById('statusMessage').innerHTML =
+                        `<strong>ESP32 Offline:</strong> No signal received in the last 30s. Next scheduled check should arrive within 15s.`;
+                    espPill.classList.add('offline');
+                    espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Offline</span>`;
+                    navPill.classList.add('offline');
+                    navPill.innerHTML = `<span class="status-dot"></span><span class="pill-text">Offline</span>`;
+                }
+            } catch (error) {
+                console.error('Error checking ESP32 status:', error);
+                document.getElementById('statusMessage').innerHTML =
+                    '<strong>Offline Mode:</strong> Cannot reach server. Check your connection.';
                 const espPill = document.getElementById('espStatusPill');
                 espPill.classList.add('offline');
                 espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Offline</span>`;
@@ -1232,6 +1259,7 @@
 
         async function refreshData() {
             await loadData();
+            await checkEsp32Status();
             loadLogs();
             showToast('Data refreshed', 'success');
         }
@@ -1306,7 +1334,9 @@
         /* ============ INIT ============ */
         document.getElementById('lastUpdate').textContent = new Date().toLocaleString('en-PH');
         loadData();
+        checkEsp32Status();
         loadLogs();
+        setInterval(checkEsp32Status, 5000);
     </script>
 </body>
 </html>

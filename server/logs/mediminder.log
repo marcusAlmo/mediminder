@@ -36,3 +36,71 @@
 2026-09-01 09:38:59 - mediminder - INFO -   ✓ Rate limiting (placeholder - implement in production)
 2026-09-01 09:38:59 - mediminder - INFO -   ✓ CORS configuration
 2026-09-01 09:38:59 - mediminder - INFO -   ✓ Datetime format validation
+2026-09-01 09:45:46 - mediminder - INFO - ======================================================================
+2026-09-01 09:45:46 - mediminder - INFO -   MEDIMINDER by SJNHS - Smart Medicine Dispenser API Server
+2026-09-01 09:45:46 - mediminder - INFO - ======================================================================
+2026-09-01 09:45:46 - mediminder - INFO - Starting Flask Server on port 5000...
+2026-09-01 09:45:46 - mediminder - INFO - API Endpoints:
+2026-09-01 09:45:46 - mediminder - INFO -   GET  /api/dispense          - Fetch 7-rack schedule, active rack & full PHT RTC timestamp
+2026-09-01 09:45:46 - mediminder - INFO -   POST /api/dispense-log      - Submit successful dispense event (advances sequence pointer)
+2026-09-01 09:45:46 - mediminder - INFO -   POST /api/intake            - Submit patient intake / drawer-open event
+2026-09-01 09:45:46 - mediminder - INFO -   POST /api/dispense-schedule - Update 7-rack date & time schedule
+2026-09-01 09:45:46 - mediminder - INFO -   GET  /api/dispense-logs     - View dispensation history
+2026-09-01 09:45:46 - mediminder - INFO -   GET  /api/intake-logs       - View patient intake history
+2026-09-01 09:45:46 - mediminder - INFO -   GET  /api/status            - Health check & system status
+2026-09-01 09:45:46 - mediminder - INFO -   GET  /                      - Landing Page (hero, features, rationale)
+2026-09-01 09:45:46 - mediminder - INFO -   GET  /dashboard             - Web Dashboard UI
+2026-09-01 09:45:46 - mediminder - INFO - Security Features:
+2026-09-01 09:45:46 - mediminder - INFO -   ✓ Input validation and sanitization
+2026-09-01 09:45:46 - mediminder - INFO -   ✓ Rate limiting (placeholder - implement in production)
+2026-09-01 09:45:46 - mediminder - INFO -   ✓ CORS configuration
+2026-09-01 09:45:46 - mediminder - INFO -   ✓ Datetime format validation
+2026-09-01 09:45:55 - mediminder - INFO - ======================================================================
+2026-09-01 09:45:55 - mediminder - INFO -   MEDIMINDER by SJNHS - Smart Medicine Dispenser API Server
+2026-09-01 09:45:55 - mediminder - INFO - ======================================================================
+2026-09-01 09:45:55 - mediminder - INFO - Starting Flask Server on port 5000...
+2026-09-01 09:45:55 - mediminder - INFO - API Endpoints:
+2026-09-01 09:45:55 - mediminder - INFO -   GET  /api/dispense          - Fetch 7-rack schedule, active rack & full PHT RTC timestamp
+2026-09-01 09:45:55 - mediminder - INFO -   POST /api/dispense-log      - Submit successful dispense event (advances sequence pointer)
+2026-09-01 09:45:55 - mediminder - INFO -   POST /api/intake            - Submit patient intake / drawer-open event
+2026-09-01 09:45:55 - mediminder - INFO -   POST /api/dispense-schedule - Update 7-rack date & time schedule
+2026-09-01 09:45:55 - mediminder - INFO -   GET  /api/dispense-logs     - View dispensation history
+2026-09-01 09:45:55 - mediminder - INFO -   GET  /api/intake-logs       - View patient intake history
+2026-09-01 09:45:55 - mediminder - INFO -   GET  /api/status            - Health check & system status
+2026-09-01 09:45:55 - mediminder - INFO -   GET  /                      - Landing Page (hero, features, rationale)
+2026-09-01 09:45:55 - mediminder - INFO -   GET  /dashboard             - Web Dashboard UI
+2026-09-01 09:45:55 - mediminder - INFO - Security Features:
+2026-09-01 09:45:55 - mediminder - INFO -   ✓ Input validation and sanitization
+2026-09-01 09:45:55 - mediminder - INFO -   ✓ Rate limiting (placeholder - implement in production)
+2026-09-01 09:45:55 - mediminder - INFO -   ✓ CORS configuration
+2026-09-01 09:45:55 - mediminder - INFO -   ✓ Datetime format validation
+2026-09-01 09:46:45 - mediminder - INFO - [1238a6b4] >>> GET /dashboard from 127.0.0.1
+2026-09-01 09:46:45 - mediminder - INFO - [1238a6b4] <<< HTTP 200 GET /dashboard (6.5ms)
+2026-09-01 09:46:45 - mediminder - INFO - [e15a480e] >>> GET /api/dispense from 127.0.0.1
+2026-09-01 09:46:45 - mediminder - INFO - [0ee976b3] >>> GET /api/dispense-logs from 127.0.0.1
+2026-09-01 09:46:45 - mediminder - INFO - [c55eaa9b] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:46:45 - mediminder - INFO - [e15a480e] [DATA SERVED TO CLIENT / ESP32]
+2026-09-01 09:46:45 - mediminder - DEBUG - [e15a480e] Patient: SJNHS Student
+2026-09-01 09:46:45 - mediminder - DEBUG - [e15a480e] Active Next Rack: Rack #1 due at 2026-09-01 08:00
+2026-09-01 09:46:45 - mediminder - DEBUG - [e15a480e] Rotation Degree: 60°
+2026-09-01 09:46:45 - mediminder - INFO - [0ee976b3] <<< HTTP 200 GET /api/dispense-logs (0.5ms)
+2026-09-01 09:46:45 - mediminder - DEBUG - [e15a480e] Storage Racks: 7 available (threshold: 2)
+2026-09-01 09:46:45 - mediminder - DEBUG - [e15a480e] Current PHT Time: 2026-09-01 09:46:45 PHT (ISO: 2026-09-01T09:46:45.415525+08:00)
+2026-09-01 09:46:45 - mediminder - INFO - [c55eaa9b] <<< HTTP 200 GET /api/iot-sync-status (0.5ms)
+2026-09-01 09:46:45 - mediminder - INFO - [e15a480e] <<< HTTP 200 GET /api/dispense (2.2ms)
+2026-09-01 09:46:50 - mediminder - INFO - [93eed981] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:46:50 - mediminder - INFO - [93eed981] <<< HTTP 200 GET /api/iot-sync-status (0.3ms)
+2026-09-01 09:46:55 - mediminder - INFO - [b98a902a] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:46:55 - mediminder - INFO - [b98a902a] <<< HTTP 200 GET /api/iot-sync-status (0.5ms)
+2026-09-01 09:47:00 - mediminder - INFO - [0ffa407d] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:00 - mediminder - INFO - [0ffa407d] <<< HTTP 200 GET /api/iot-sync-status (0.4ms)
+2026-09-01 09:47:05 - mediminder - INFO - [b2fc6a01] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:05 - mediminder - INFO - [b2fc6a01] <<< HTTP 200 GET /api/iot-sync-status (1.1ms)
+2026-09-01 09:47:10 - mediminder - INFO - [07276cdd] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:10 - mediminder - INFO - [07276cdd] <<< HTTP 200 GET /api/iot-sync-status (0.3ms)
+2026-09-01 09:47:15 - mediminder - INFO - [2867b30f] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:15 - mediminder - INFO - [2867b30f] <<< HTTP 200 GET /api/iot-sync-status (0.4ms)
+2026-09-01 09:47:20 - mediminder - INFO - [430b9bba] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:20 - mediminder - INFO - [430b9bba] <<< HTTP 200 GET /api/iot-sync-status (0.4ms)
+2026-09-01 09:47:25 - mediminder - INFO - [f7df2378] >>> GET /api/iot-sync-status from 127.0.0.1
+2026-09-01 09:47:25 - mediminder - INFO - [f7df2378] <<< HTTP 200 GET /api/iot-sync-status (0.1ms)
