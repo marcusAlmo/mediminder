@@ -6,8 +6,8 @@
     <meta name="description" content="Mediminder by SJNHS - Smart Medicine Dispenser System. Reliable, automated medication scheduling and dispensing.">
     <meta name="theme-color" content="#3b82f6" id="metaTheme">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='80' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%233b82f6' width='180' height='180'/><text x='90' y='90' font-size='120' fill='white' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='rotate(-45 50 50)'><rect x='30' y='20' width='40' height='60' rx='20' fill='%233b82f6'/><rect x='30' y='50' width='40' height='30' fill='%2306b6d4'/></g></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%233b82f6' width='180' height='180'/><g transform='rotate(-45 90 90)'><rect x='70' y='58' width='40' height='64' rx='20' fill='white'/><rect x='70' y='90' width='40' height='32' fill='%23dbeafe'/></g></svg>">
 
     <title>Mediminder by SJNHS — Smart Medicine Dispenser</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -427,35 +427,8 @@
 
         .carousel-control-prev,
         .carousel-control-next {
-            width: 8%;
-            opacity: 0.7;
-            transition: opacity var(--transition);
+            display: none;
         }
-        .carousel-control-prev:hover,
-        .carousel-control-next:hover { opacity: 1; }
-        .carousel-control-prev-icon,
-        .carousel-control-next-icon {
-            background-color: var(--surface);
-            border-radius: 50%;
-            padding: 1.4rem;
-            background-image: none;
-            position: relative;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border);
-        }
-        .carousel-control-prev-icon::before,
-        .carousel-control-next-icon::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 12px; height: 12px;
-            border-top: 2.5px solid var(--text);
-            border-right: 2.5px solid var(--text);
-        }
-        .carousel-control-prev-icon::before { transform: translate(-30%, -50%) rotate(-135deg); }
-        .carousel-control-next-icon::before { transform: translate(-70%, -50%) rotate(45deg); }
 
         .carousel-indicators {
             margin-bottom: 0.8rem;
@@ -554,21 +527,24 @@
         .rationale-quote {
             margin-top: 3rem;
             text-align: center;
-            padding: 2rem 1.5rem;
+            padding: 2.5rem 1.5rem 2rem;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             position: relative;
+            overflow: hidden;
         }
         .rationale-quote::before {
-            content: '"';
+            content: '\201C';
             position: absolute;
-            top: -10px; left: 20px;
-            font-size: 5rem;
-            font-family: Georgia, serif;
+            top: 0.4rem;
+            left: 1.1rem;
+            font-size: 3.5rem;
+            font-family: Georgia, 'Times New Roman', serif;
             color: var(--primary);
-            opacity: 0.25;
+            opacity: 0.22;
             line-height: 1;
+            pointer-events: none;
         }
         .rationale-quote p {
             font-size: 1.15rem;
@@ -710,7 +686,7 @@
             .feature-icon-wrap { width: 90px; height: 90px; font-size: 2.5rem; border-radius: 20px; }
             .feature-tags { justify-content: center; }
 
-            .rationale-quote::before { font-size: 3.5rem; }
+            .rationale-quote::before { font-size: 2.75rem; top: 0.3rem; left: 0.85rem; }
             .final-cta-card { padding: 2rem 1.5rem; }
         }
 
@@ -732,7 +708,14 @@
     <nav class="navbar">
         <div class="container-fluid">
             <a class="navbar-brand" href="/" aria-label="Mediminder home">
-                <span class="brand-mark">💊</span>
+                <span class="brand-mark">
+                    <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+                        <g transform="rotate(-45 50 50)">
+                            <rect x="30" y="20" width="40" height="60" rx="20" fill="white"/>
+                            <rect x="30" y="50" width="40" height="30" fill="rgba(255,255,255,0.55)"/>
+                        </g>
+                    </svg>
+                </span>
                 <span>
                     <span class="brand-text">Mediminder</span>
                     <span class="brand-sub">by SJNHS</span>
@@ -1015,7 +998,7 @@
         </div>
         <p><strong>Mediminder by SJNHS</strong></p>
         <p>Smart Medicine Dispenser System</p>
-        <p class="footer-dim">Developed with ❤️ for better healthcare management</p>
+        <p class="footer-dim">Developed for better healthcare management</p>
     </div>
 
     <!-- Toast container -->
@@ -1052,8 +1035,8 @@
         /* ============ SERVICE WORKER ============ */
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/sw.js')
-                .then(() => console.log('✓ Service Worker registered'))
-                .catch(err => console.log('✗ Service Worker registration failed:', err));
+                .then(() => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
         }
 
         /* ============ CAROUSEL PAUSE ON HOVER (accessibility) ============ */

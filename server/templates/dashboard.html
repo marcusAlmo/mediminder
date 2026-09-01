@@ -6,8 +6,8 @@
     <meta name="description" content="Mediminder by SJNHS - Smart Medicine Dispenser System">
     <meta name="theme-color" content="#3b82f6" id="metaTheme">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='80' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%233b82f6' width='180' height='180'/><text x='90' y='90' font-size='120' fill='white' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='rotate(-45 50 50)'><rect x='30' y='20' width='40' height='60' rx='20' fill='%233b82f6'/><rect x='30' y='50' width='40' height='30' fill='%2306b6d4'/></g></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%233b82f6' width='180' height='180'/><g transform='rotate(-45 90 90)'><rect x='70' y='58' width='40' height='64' rx='20' fill='white'/><rect x='70' y='90' width='40' height='32' fill='%23dbeafe'/></g></svg>">
 
     <title>Mediminder by SJNHS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -751,7 +751,14 @@
     <nav class="navbar">
         <div class="container-fluid">
             <a class="navbar-brand" href="/" aria-label="Mediminder home">
-                <span class="brand-mark">💊</span>
+                <span class="brand-mark">
+                    <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+                        <g transform="rotate(-45 50 50)">
+                            <rect x="30" y="20" width="40" height="60" rx="20" fill="white"/>
+                            <rect x="30" y="50" width="40" height="30" fill="rgba(255,255,255,0.55)"/>
+                        </g>
+                    </svg>
+                </span>
                 <span>
                     <span class="brand-text">Mediminder</span>
                     <span class="brand-sub">by SJNHS</span>
@@ -796,7 +803,7 @@
         <!-- Install Prompt -->
         <div id="installPrompt" class="install-prompt hidden">
             <div>
-                <strong>📱 Install Mediminder</strong>
+                <strong><i class="bi bi-phone"></i> Install Mediminder</strong>
                 <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Add to your home screen for quick access</p>
             </div>
             <div style="display: flex; gap: 0.5rem;">
@@ -840,7 +847,7 @@
                     </div>
 
                     <div class="alert alert-info">
-                        <strong>📡 ESP32 Status:</strong>
+                        <strong><i class="bi bi-broadcast"></i> ESP32 Status:</strong>
                         <p id="statusMessage" style="margin: 0.5rem 0 0 0;">Loading system status...</p>
                     </div>
 
@@ -911,7 +918,7 @@
                 <div class="card-body">
                     <div id="logsContainer">
                         <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-icon"><i class="bi bi-inbox"></i></div>
                             <p>No dispensation logs yet</p>
                         </div>
                     </div>
@@ -937,7 +944,7 @@
                         <div class="alert alert-info">
                             <p><strong>Version:</strong> 2.0.0 (PWA)</p>
                             <p><strong>Last Updated:</strong> <span id="lastUpdate">--</span></p>
-                            <p><strong>Offline Support:</strong> ✓ Enabled</p>
+                            <p><strong>Offline Support:</strong> Enabled</p>
                         </div>
                     </div>
 
@@ -960,7 +967,7 @@
     <div class="footer">
         <p><strong>Mediminder by SJNHS</strong></p>
         <p>Smart Medicine Dispenser System</p>
-        <p class="footer-dim">Developed with ❤️ for better healthcare management</p>
+        <p class="footer-dim">Developed for better healthcare management</p>
     </div>
 
     <!-- Toast container -->
@@ -1041,17 +1048,22 @@
         // Replace native alert() with toasts for a modern feel
         const nativeAlert = window.alert;
         window.alert = function(msg) {
-            const text = String(msg || '');
-            if (text.startsWith('✓')) return showToast(text, 'success');
-            if (text.startsWith('✗') || text.toLowerCase().includes('error')) return showToast(text, 'error');
+            const text = String(msg || '').trim();
+            const lower = text.toLowerCase();
+            if (lower.startsWith('error') || lower.includes('error')) {
+                return showToast(text, 'error');
+            }
+            if (lower.includes('success') || lower.includes('saved') || lower.includes('cleared') || lower.includes('refreshed') || lower.includes('triggered') || lower.includes('auto-filled')) {
+                return showToast(text, 'success');
+            }
             return showToast(text, 'info');
         };
 
         /* ============ SERVICE WORKER ============ */
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/sw.js')
-                .then(reg => console.log('✓ Service Worker registered'))
-                .catch(err => console.log('✗ Service Worker registration failed:', err));
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
         }
 
         /* ============ INSTALL PROMPT ============ */
@@ -1099,7 +1111,7 @@
                     document.getElementById('statPatient').textContent = data.patient_name;
                     document.getElementById('statNextRack').textContent = `Rack #${data.current_rack}`;
                     document.getElementById('statRacksLeft').textContent = data.rack_count;
-                    document.getElementById('statusMessage').textContent = `✓ Connected to ESP32. Next dose: ${data.next_rack_datetime || 'N/A'}`;
+                    document.getElementById('statusMessage').textContent = `Connected to ESP32. Next dose: ${data.next_rack_datetime || 'N/A'}`;
 
                     const espPill = document.getElementById('espStatusPill');
                     espPill.classList.remove('offline');
@@ -1116,7 +1128,7 @@
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('statusMessage').innerHTML = '⚠️ <strong>Offline Mode:</strong> Using cached data. Changes will sync when connection returns.';
+                document.getElementById('statusMessage').innerHTML = '<strong>Offline Mode:</strong> Using cached data. Changes will sync when connection returns.';
                 const espPill = document.getElementById('espStatusPill');
                 espPill.classList.add('offline');
                 espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Offline</span>`;
@@ -1269,7 +1281,7 @@
                 } else {
                     container.innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-icon"><i class="bi bi-inbox"></i></div>
                             <p>No dispensation logs yet</p>
                         </div>
                     `;
