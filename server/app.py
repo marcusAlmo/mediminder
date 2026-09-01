@@ -209,7 +209,14 @@ def migrate_default_data(data: Dict[str, Any]) -> None:
     cfg = data.get("config", {})
     if not cfg.get("racks"):
         cfg["racks"] = init_default_racks()
+    else:
+        # Backfill drugs array for racks that predate the drugs feature
+        for rack in cfg["racks"]:
+            if "drugs" not in rack:
+                rack["drugs"] = []
     cfg.setdefault("patient_name", "Test Patient")
+    cfg.setdefault("patient_age", "")
+    cfg.setdefault("patient_sickness", "")
     cfg.setdefault("rotation_degree", 52)
     cfg.setdefault("current_rack", 1)
     cfg.setdefault("rack_count", 7)
@@ -367,6 +374,8 @@ def get_dispense_schedule():
     response_data = {
         "status": "success",
         "patient_name": dispenser_config.get("patient_name", "Test Patient"),
+        "patient_age": dispenser_config.get("patient_age", ""),
+        "patient_sickness": dispenser_config.get("patient_sickness", ""),
         "rotation_degree": dispenser_config.get("rotation_degree", 52),
         "total_racks": 7,  # Default 7 storage racks
         "current_rack": dispenser_config.get("current_rack", 1),
@@ -619,6 +628,21 @@ def update_dispense_schedule():
             return jsonify({"status": "error", "message": "patient_name contains invalid characters"}), 400
         dispenser_config["patient_name"] = sanitized_name
 
+    if "patient_age" in data:
+        if data["patient_age"]:
+            try:
+                age = int(data["patient_age"])
+                if age < 0 or age > 150:
+                    return jsonify({"status": "error", "message": "patient_age must be between 0 and 150"}), 400
+                dispenser_config["patient_age"] = age
+            except (ValueError, TypeError):
+                return jsonify({"status": "error", "message": "patient_age must be a valid integer"}), 400
+        else:
+            dispenser_config["patient_age"] = ""
+
+    if "patient_sickness" in data:
+        dispenser_config["patient_sickness"] = sanitize_string(data["patient_sickness"], 100)
+
     if "rotation_degree" in data:
         try:
             deg = float(data["rotation_degree"])
@@ -789,6 +813,37 @@ def update_dispense_schedule():
     }), 200
 
 
+@app.route("/api/racks/<int:rack_id>/drugs", methods=["PUT", "POST"])
+def update_rack_drugs(rack_id: int):
+    """Update only the drugs list for a single rack, independent of schedule times."""
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"status": "error", "message": "Invalid JSON payload"}), 400
+
+    if not validate_rack_id(rack_id):
+        return jsonify({"status": "error", "message": f"Invalid rack_id: {rack_id}"}), 400
+
+    drugs_raw = data.get("drugs")
+    if not isinstance(drugs_raw, list):
+        return jsonify({"status": "error", "message": "drugs must be an array"}), 400
+
+    drugs = [sanitize_string(str(d), 100) for d in drugs_raw if str(d).strip()]
+
+    racks = dispenser_config.get("racks", [])
+    for rack in racks:
+        if rack.get("rack_id") == rack_id:
+            rack["drugs"] = drugs
+            save_data()
+            return jsonify({
+                "status": "success",
+                "message": f"Drugs for Rack #{rack_id} updated.",
+                "rack_id": rack_id,
+                "drugs": drugs
+            }), 200
+
+    return jsonify({"status": "error", "message": f"Rack {rack_id} not found"}), 404
+
+
 @app.route("/api/dispense-logs", methods=["GET"])
 def get_dispense_logs():
     """Fetch all recorded dispensation logs."""
@@ -818,6 +873,23 @@ def clear_dispense_logs():
     return jsonify({
         "status": "success",
         "message": "All dispensation logs cleared."
+    }), 200
+
+
+@app.route("/api/schedule/reset", methods=["POST"])
+def reset_schedule():
+    """Reset the 7-rack schedule and drugs to defaults."""
+    default_racks = init_default_racks()
+    dispenser_config["racks"] = default_racks
+    dispenser_config["current_rack"] = 1
+    dispenser_config["rack_count"] = 0
+    dispenser_config["dispense_time"] = [r["datetime"].split(" ")[-1] for r in default_racks if "datetime" in r]
+    dispenser_config["last_updated_at"] = datetime.now(PHT).isoformat()
+    save_data()
+    return jsonify({
+        "status": "success",
+        "message": "Schedule reset to defaults successfully.",
+        "racks": default_racks
     }), 200
 
 

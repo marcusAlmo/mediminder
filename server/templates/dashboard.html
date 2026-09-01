@@ -579,6 +579,7 @@
             transition: all 0.12s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.4rem;
             font-family: var(--font);
             cursor: pointer;
@@ -1057,6 +1058,10 @@
             .rack-item { padding: 0.95rem; }
         }
 
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
@@ -1196,21 +1201,24 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><i class="bi bi-calendar-event"></i> Medication Schedule</h2>
+                    <button class="btn-danger-soft" onclick="openClearScheduleModal()">
+                        <i class="bi bi-trash-fill"></i> Clear
+                    </button>
                 </div>
                 <div class="card-body">
                     <form id="scheduleForm" onsubmit="saveSchedule(event)">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Patient Name</label>
                                 <input type="text" class="form-control" id="patientName" placeholder="e.g., Test Patient" required>
                             </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Age</label>
+                                <input type="number" class="form-control" id="patientAge" min="0" max="150" placeholder="0">
+                            </div>
                             <div class="col-md-6">
-                                <label class="form-label">Rotation Degrees per Rack</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="rotationDegree" min="1" max="360" value="52" required>
-                                    <span class="input-group-text">&deg;</span>
-                                </div>
-                                <small class="text-muted">Default: 52&deg; (adjust based on your rack design)</small>
+                                <label class="form-label">Sickness / Condition</label>
+                                <input type="text" class="form-control" id="patientSickness" placeholder="e.g., Hypertension">
                             </div>
                         </div>
 
@@ -1268,6 +1276,15 @@
                     <h2 class="card-title"><i class="bi bi-gear-fill"></i> Settings</h2>
                 </div>
                 <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Rotation Degrees per Rack</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="rotationDegree" min="1" max="360" value="52" required>
+                            <span class="input-group-text">&deg;</span>
+                        </div>
+                        <small class="text-muted">Default: 52&deg; (adjust based on your rack design)</small>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label">Rack Warning Threshold</label>
                         <input type="number" class="form-control" id="rackThreshold" min="0" max="7" value="3">
@@ -1330,6 +1347,44 @@
                     <i class="bi bi-x-circle-fill"></i> Cancel
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Clear Schedule Confirmation Modal -->
+    <div id="clearScheduleModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--surface); border-radius: var(--radius); border: 2px solid var(--border); padding: 1.5rem; max-width: 420px; width: 90%; box-shadow: var(--shadow-md); text-align: center;">
+            <div style="width: 64px; height: 64px; background: #FFE8E8; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 2px solid #FFB0B0;">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size: 1.75rem; color: var(--primary);"></i>
+            </div>
+            <h3 style="margin-bottom: 0.5rem; color: var(--text); font-weight: 900;">Clear Schedule?</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-weight: 600;">
+                This will reset the 7-rack schedule and all configured drugs to defaults. This action cannot be undone.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeClearScheduleModal()" style="flex: 1;">
+                    <i class="bi bi-x-circle-fill"></i> Cancel
+                </button>
+                <button type="button" class="btn-danger-soft" onclick="clearSchedule()" style="flex: 1;">
+                    <i class="bi bi-trash-fill"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync to ESP32 Modal -->
+    <div id="syncModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--surface); border-radius: var(--radius); border: 2px solid var(--border); padding: 1.5rem; max-width: 420px; width: 90%; box-shadow: var(--shadow-md); text-align: center;">
+            <div id="syncIcon" style="width: 64px; height: 64px; background: var(--surface-2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 2px solid var(--border);">
+                <i class="bi bi-wifi" style="font-size: 1.75rem; color: var(--primary);"></i>
+            </div>
+            <h3 id="syncTitle" style="margin-bottom: 0.5rem; color: var(--text); font-weight: 900;">Syncing to ESP32...</h3>
+            <p id="syncMessage" style="color: var(--text-muted); margin-bottom: 1.5rem; font-weight: 600;">Waiting for the device to fetch the latest configuration.</p>
+            <div id="syncProgress" style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                <div class="spinner" style="width: 2rem; height: 2rem; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+            <button id="syncCloseBtn" type="button" class="btn btn-secondary w-100" onclick="closeSyncModal()" style="display: none;">
+                <i class="bi bi-check-circle-fill"></i> Done
+            </button>
         </div>
     </div>
 
@@ -1599,6 +1654,8 @@
                     }
 
                     document.getElementById('patientName').value = data.patient_name;
+                    document.getElementById('patientAge').value = data.patient_age || '';
+                    document.getElementById('patientSickness').value = data.patient_sickness || '';
                     document.getElementById('rotationDegree').value = data.rotation_degree;
                     document.getElementById('rackThreshold').value = data.rack_warning_threshold;
 
@@ -1669,17 +1726,17 @@
             Object.keys(dayGroups).sort().forEach((date) => {
                 const dayRacks = dayGroups[date];
                 
-                // Check if day has drugs loaded
-                const hasDrugs = dayRacks.some(rack => rack.drugs && rack.drugs.length > 0);
-                
+                // A day is "Loaded" if it has at least one pending rack to dispense
+                const hasPending = dayRacks.some(rack => rack.status === 'pending');
+
                 // Create day header
                 const dayGroup = document.createElement('div');
                 dayGroup.className = 'day-group';
-                
+
                 const dateObj = new Date(date + 'T00:00:00');
                 const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
                 const dayDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                
+
                 const dayHeader = document.createElement('div');
                 dayHeader.className = 'day-header';
                 dayHeader.innerHTML = `
@@ -1687,9 +1744,9 @@
                         <div class="day-label">${dayName}</div>
                         <div class="day-date">${dayDate}</div>
                     </div>
-                    <div class="day-status-indicator ${hasDrugs ? 'loaded' : 'empty'}">
-                        <i class="bi ${hasDrugs ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
-                        <span>${hasDrugs ? 'Loaded' : 'Empty'}</span>
+                    <div class="day-status-indicator ${hasPending ? 'loaded' : 'empty'}">
+                        <i class="bi ${hasPending ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
+                        <span>${hasPending ? 'Loaded' : 'Empty'}</span>
                     </div>
                 `;
                 dayGroup.appendChild(dayHeader);
@@ -1893,16 +1950,27 @@
 
         async function saveDrugs() {
             if (!currentRackId) return;
-            
+
             const rackId = currentRackId;
-            const rackItem = document.querySelector(`[data-rack-id="${rackId}"]`);
-            if (rackItem) {
-                rackItem.dataset.drugs = JSON.stringify(currentDrugs);
+
+            try {
+                const response = await fetch(`/api/racks/${rackId}/drugs`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ drugs: currentDrugs })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    closeDrugModal();
+                    showToast(`Drugs saved for Rack #${rackId}`, 'success');
+                    await loadData();
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error saving drugs: ' + error.message, 'error');
             }
-            
-            closeDrugModal();
-            await saveSchedule();
-            showToast(`Drugs saved for Rack #${rackId}`, 'success');
         }
 
         function autoFillSchedule() {
@@ -2032,6 +2100,8 @@
 
             const payload = {
                 patient_name: document.getElementById('patientName').value,
+                patient_age: document.getElementById('patientAge').value,
+                patient_sickness: document.getElementById('patientSickness').value,
                 rotation_degree: parseInt(document.getElementById('rotationDegree').value),
                 rack_warning_threshold: parseInt(document.getElementById('rackThreshold').value),
                 racks
@@ -2048,6 +2118,8 @@
                 if (response.ok) {
                     showToast('Configuration saved successfully', 'success');
                     loadData();
+                    openSyncModal();
+                    waitForEsp32Sync();
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -2147,6 +2219,77 @@
                     showToast('Error: ' + error.message, 'error');
                 }
             }
+        }
+
+        function openClearScheduleModal() {
+            document.getElementById('clearScheduleModal').style.display = 'flex';
+        }
+
+        function closeClearScheduleModal() {
+            document.getElementById('clearScheduleModal').style.display = 'none';
+        }
+
+        async function clearSchedule() {
+            try {
+                const response = await fetch('/api/schedule/reset', { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    showToast('Schedule cleared and reset to defaults', 'success');
+                    closeClearScheduleModal();
+                    loadData();
+                    openSyncModal();
+                    waitForEsp32Sync();
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error clearing schedule: ' + error.message, 'error');
+            }
+        }
+
+        function openSyncModal() {
+            document.getElementById('syncModal').style.display = 'flex';
+            document.getElementById('syncTitle').textContent = 'Syncing to ESP32...';
+            document.getElementById('syncMessage').textContent = 'Waiting for the device to fetch the latest configuration.';
+            document.getElementById('syncProgress').style.display = 'flex';
+            document.getElementById('syncCloseBtn').style.display = 'none';
+        }
+
+        function closeSyncModal() {
+            document.getElementById('syncModal').style.display = 'none';
+        }
+
+        function showSyncSuccess() {
+            document.getElementById('syncTitle').textContent = 'Sync Successful';
+            document.getElementById('syncMessage').textContent = 'The ESP32 has the latest configuration.';
+            document.getElementById('syncProgress').style.display = 'none';
+            document.getElementById('syncCloseBtn').style.display = 'inline-flex';
+            checkEsp32Status();
+        }
+
+        function showSyncTimeout() {
+            document.getElementById('syncTitle').textContent = 'Sync Pending';
+            document.getElementById('syncMessage').textContent = 'The ESP32 is offline or has not fetched yet. It will sync automatically on the next poll.';
+            document.getElementById('syncProgress').style.display = 'none';
+            document.getElementById('syncCloseBtn').style.display = 'inline-flex';
+        }
+
+        async function waitForEsp32Sync() {
+            const maxAttempts = 20;
+            for (let i = 0; i < maxAttempts; i++) {
+                try {
+                    const response = await fetch('/api/iot-sync-status');
+                    const data = await response.json();
+                    if (data.synced) {
+                        showSyncSuccess();
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error checking sync status:', error);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            showSyncTimeout();
         }
 
         /* ============ INIT ============ */
