@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Mediminder by SJNHS - Smart Medicine Dispenser System">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='80' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%233b82f6' width='180' height='180'/><text x='90' y='90' font-size='120' fill='white' text-anchor='middle' dominant-baseline='middle'>💊</text></svg>">
+    
+    <title>Mediminder by SJNHS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --bg-dark: #0b0f19;
+            --bg-surface: #131b2e;
+            --bg-elevated: #1a243d;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a243d 100%);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: rgba(19, 27, 46, 0.8) !important;
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar-brand span {
+            font-size: 1.8rem;
+        }
+
+        .nav-link {
+            color: var(--text-muted) !important;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--accent-cyan) !important;
+        }
+
+        .container-main {
+            padding: 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(19, 27, 46, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.15);
+        }
+
+        .card-header {
+            background: rgba(26, 36, 61, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .badge-status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-online {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-offline {
+            background: rgba(244, 63, 94, 0.15);
+            color: #f43f5e;
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .status-indicator.offline {
+            background: #f43f5e;
+            box-shadow: 0 0 10px #f43f5e;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: var(--accent-blue);
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .form-control,
+        .form-select {
+            background: rgba(26, 36, 61, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background: rgba(26, 36, 61, 0.8);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 0.2rem rgba(6, 182, 212, 0.25);
+            color: var(--text-main);
+        }
+
+        .form-label {
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group-text {
+            background: rgba(26, 36, 61, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+        }
+
+        .rack-item {
+            background: rgba(26, 36, 61, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .rack-item.active {
+            border-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .rack-item.dispensed {
+            opacity: 0.6;
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .rack-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .rack-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .rack-item.active .rack-badge {
+            background: rgba(6, 182, 212, 0.2);
+            color: var(--accent-cyan);
+        }
+
+        .log-item {
+            background: rgba(26, 36, 61, 0.3);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .log-item.success {
+            border-left-color: var(--accent-emerald);
+        }
+
+        .log-item.warning {
+            border-left-color: var(--accent-amber);
+        }
+
+        .log-item.error {
+            border-left-color: var(--accent-rose);
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .log-message {
+            color: var(--text-main);
+            margin: 0.5rem 0 0 0;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: var(--accent-blue);
+            border-radius: 8px;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+            border-radius: 8px;
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #f59e0b;
+            border-radius: 8px;
+        }
+
+        .alert-danger {
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #f43f5e;
+            border-radius: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(26, 36, 61, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .footer {
+            background: rgba(19, 27, 46, 0.8);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 4rem;
+        }
+
+        .footer p {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .install-prompt {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .install-prompt.hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container-main {
+                padding: 1rem 0.5rem;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .spinner-border {
+            color: var(--accent-cyan);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <span>💊</span>
+                <span>Mediminder</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#schedule">Schedule</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#logs">Logs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#settings">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-main">
+        <!-- Install Prompt -->
+        <div id="installPrompt" class="install-prompt hidden">
+            <div>
+                <strong>📱 Install Mediminder</strong>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Add to your home screen for quick access</p>
+            </div>
+            <div>
+                <button class="btn btn-primary btn-sm" onclick="installApp()">Install</button>
+                <button class="btn btn-secondary btn-sm" onclick="dismissInstall()">Dismiss</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="bi bi-speedometer2"></i>
+                        Dashboard
+                    </h2>
+                    <span class="badge-status badge-online">
+                        <span class="status-indicator online"></span>
+                        System Online
+                    </span>
+                </div>
+                <div class="card-body">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="statPatient">--</div>
+                            <div class="stat-label">Patient Name</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statNextRack">--</div>
+                            <div class="stat-label">Next Rack Due</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statRacksLeft">--</div>
+                            <div class="stat-label">Racks Remaining</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statTime">--:--</div>
+                            <div class="stat-label">Current Time (PHT)</div>
+                        </div>
+                    </div>
+
+                    <!-- Current Status -->
+                    <div class="alert alert-info">
+                        <strong>📡 ESP32 Status:</strong>
+                        <p id="statusMessage" style="margin: 0.5rem 0 0 0;">Loading system status...</p>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <button class="btn btn-primary w-100" onclick="refreshData()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh Data
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-secondary w-100" onclick="testDispense()">
+                                <i class="bi bi-play-circle"></i> Test Dispense
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Section -->
+        <div id="schedule" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="bi bi-calendar-event"></i>
+                        Medication Schedule
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="scheduleForm" onsubmit="saveSchedule(event)">
+                        <!-- Patient Name -->
+                        <div class="mb-3">
+                            <label class="form-label">Patient Name</label>
+                            <input type="text" class="form-control" id="patientName" placeholder="e.g., Test Patient" required>
+                        </div>
+
+                        <!-- Rotation Degree -->
+                        <div class="mb-3">
+                            <label class="form-label">Rotation Degrees per Rack</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="rotationDegree" min="1" max="360" value="52" required>
+                                <span class="input-group-text">°</span>
+                            </div>
+                            <small class="text-muted">Default: 52° (adjust based on your rack design)</small>
+                        </div>
+
+                        <!-- 7-Rack Schedule -->
+                        <div class="mb-3">
+                            <label class="form-label">7-Rack Schedule</label>
+                            <div id="racksContainer"></div>
+                            <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="autoFillSchedule()">
+                                <i class="bi bi-lightning-charge"></i> Auto-Fill (4h spacing)
+                            </button>
+                        </div>
+
+                        <!-- Save Button -->
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-circle"></i> Save Configuration
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div id="logs" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="bi bi-file-text"></i>
+                        Dispensation Logs
+                    </h2>
+                    <button class="btn btn-secondary btn-sm" onclick="clearLogs()">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="logsContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No dispensation logs yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settings" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="bi bi-gear"></i>
+                        Settings
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Rack Warning Threshold</label>
+                        <input type="number" class="form-control" id="rackThreshold" min="0" max="7" value="3">
+                        <small class="text-muted">Alert when remaining racks ≤ this value</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">System Information</label>
+                        <div class="alert alert-info">
+                            <p><strong>Version:</strong> 2.0.0 (PWA)</p>
+                            <p><strong>Last Updated:</strong> <span id="lastUpdate">--</span></p>
+                            <p><strong>Offline Support:</strong> ✓ Enabled</p>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-secondary w-100" onclick="installApp()">
+                        <i class="bi bi-download"></i> Install as App
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p><strong>Mediminder by SJNHS</strong></p>
+        <p>Smart Medicine Dispenser System</p>
+        <p style="font-size: 0.8rem; color: #64748b;">Developed with ❤️ for better healthcare management</p>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- PWA & App Logic -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(reg => console.log('✓ Service Worker registered'))
+                .catch(err => console.log('✗ Service Worker registration failed:', err));
+        }
+
+        // Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').classList.remove('hidden');
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✓ App installed');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        function dismissInstall() {
+            document.getElementById('installPrompt').classList.add('hidden');
+        }
+
+        // Update Live Clock
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('statTime').textContent = timeString;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Load Data
+        async function loadData() {
+            try {
+                const response = await fetch('/api/dispense');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Update stats
+                    document.getElementById('statPatient').textContent = data.patient_name;
+                    document.getElementById('statNextRack').textContent = `Rack #${data.current_rack}`;
+                    document.getElementById('statRacksLeft').textContent = data.rack_count;
+                    document.getElementById('statusMessage').textContent = `✓ Connected to ESP32. Next dose: ${data.next_rack_datetime || 'N/A'}`;
+
+                    // Update form
+                    document.getElementById('patientName').value = data.patient_name;
+                    document.getElementById('rotationDegree').value = data.rotation_degree;
+                    document.getElementById('rackThreshold').value = data.rack_warning_threshold;
+
+                    // Render racks
+                    renderRacks(data.racks);
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('statusMessage').innerHTML = '⚠️ <strong>Offline Mode:</strong> Using cached data. Changes will sync when connection returns.';
+            }
+        }
+
+        function renderRacks(racks) {
+            const container = document.getElementById('racksContainer');
+            container.innerHTML = '';
+
+            racks.forEach((rack, index) => {
+                const isActive = rack.status === 'pending';
+                const html = `
+                    <div class="rack-item ${isActive ? 'active' : 'dispensed'}">
+                        <div class="rack-header">
+                            <span class="rack-badge">Rack #${rack.rack_id}</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">
+                                ${rack.status.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="datetime-local" class="form-control form-control-sm" 
+                                       value="${rack.datetime.replace(' ', 'T')}" 
+                                       onchange="updateRack(${rack.rack_id}, this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <select class="form-select form-select-sm" onchange="updateRackStatus(${rack.rack_id}, this.value)">
+                                    <option value="pending" ${rack.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="dispensed" ${rack.status === 'dispensed' ? 'selected' : ''}>Dispensed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        function updateRack(rackId, datetime) {
+            // Update will be saved with form submission
+            console.log(`Rack ${rackId} updated to ${datetime}`);
+        }
+
+        function updateRackStatus(rackId, status) {
+            // Update will be saved with form submission
+            console.log(`Rack ${rackId} status updated to ${status}`);
+        }
+
+        function autoFillSchedule() {
+            const now = new Date();
+            const inputs = document.querySelectorAll('input[type="datetime-local"]');
+            
+            inputs.forEach((input, index) => {
+                const date = new Date(now.getTime() + (index + 1) * 4 * 3600 * 1000);
+                const isoString = date.toISOString().slice(0, 16);
+                input.value = isoString;
+            });
+
+            alert('✓ Schedule auto-filled with 4-hour spacing');
+        }
+
+        async function saveSchedule(event) {
+            event.preventDefault();
+
+            const racks = [];
+            document.querySelectorAll('.rack-item').forEach((item, index) => {
+                const datetime = item.querySelector('input[type="datetime-local"]').value.replace('T', ' ');
+                const status = item.querySelector('select').value;
+                racks.push({
+                    rack_id: index + 1,
+                    datetime: datetime,
+                    status: status
+                });
+            });
+
+            const payload = {
+                patient_name: document.getElementById('patientName').value,
+                rotation_degree: parseInt(document.getElementById('rotationDegree').value),
+                rack_warning_threshold: parseInt(document.getElementById('rackThreshold').value),
+                racks: racks
+            };
+
+            try {
+                const response = await fetch('/api/dispense-schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('✓ Configuration saved successfully!');
+                    loadData();
+                } else {
+                    alert('✗ Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('✗ Error saving configuration: ' + error.message);
+            }
+        }
+
+        async function refreshData() {
+            await loadData();
+            loadLogs();
+            alert('✓ Data refreshed');
+        }
+
+        async function testDispense() {
+            if (confirm('Test dispense cycle? This will trigger the ESP32 to dispense.')) {
+                try {
+                    const response = await fetch('/api/dispense-log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            timestamp: new Date().toISOString(),
+                            patient_name: document.getElementById('patientName').value,
+                            rotation_degree: parseInt(document.getElementById('rotationDegree').value),
+                            status: 'test'
+                        })
+                    });
+
+                    if (response.ok) {
+                        alert('✓ Test dispense triggered!');
+                        loadLogs();
+                    }
+                } catch (error) {
+                    alert('✗ Error: ' + error.message);
+                }
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const response = await fetch('/api/dispense-logs');
+                const data = await response.json();
+
+                const container = document.getElementById('logsContainer');
+                if (data.logs && data.logs.length > 0) {
+                    container.innerHTML = data.logs.map(log => `
+                        <div class="log-item ${log.status}">
+                            <div class="log-time">
+                                📅 ${new Date(log.timestamp).toLocaleString('en-PH')}
+                            </div>
+                            <div class="log-message">
+                                <strong>${log.patient_name}</strong> - Rack #${log.rack_id} (${log.rotation_degree}°)
+                            </div>
+                            <small style="color: var(--text-muted);">${log.notes}</small>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No dispensation logs yet</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        async function clearLogs() {
+            if (confirm('Clear all dispensation logs? This cannot be undone.')) {
+                try {
+                    await fetch('/api/dispense-logs', { method: 'DELETE' });
+                    loadLogs();
+                    alert('✓ Logs cleared');
+                } catch (error) {
+                    alert('✗ Error: ' + error.message);
+                }
+            }
+        }
+
+        // Initialize
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString('en-PH');
+        loadData();
+        loadLogs();
+
+        // Smooth scrolling for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+[project]
+name = "mediminder"
+version = "2.0.0"
+description = "Mediminder by SJNHS - Smart Medicine Dispenser PWA"
+requires-python = ">=3.9"
+dependencies = [
+    "flask",
+    "flask-cors",
+    "Jinja2",
+]
+
+[tool.uv]

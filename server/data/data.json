@@ -1,0 +1,71 @@
+{
+  "config": {
+    "racks": [
+      {
+        "rack_id": 1,
+        "datetime": "2026-09-01 08:00",
+        "iso_datetime": "2026-09-01T08:00:00+08:00",
+        "status": "pending",
+        "notes": "Rack 1"
+      },
+      {
+        "rack_id": 2,
+        "datetime": "2026-09-01 12:30",
+        "iso_datetime": "2026-09-01T12:30:00+08:00",
+        "status": "pending",
+        "notes": "Rack 2"
+      },
+      {
+        "rack_id": 3,
+        "datetime": "2026-09-01 18:00",
+        "iso_datetime": "2026-09-01T18:00:00+08:00",
+        "status": "pending",
+        "notes": "Rack 3"
+      },
+      {
+        "rack_id": 4,
+        "datetime": "2026-09-01 21:00",
+        "iso_datetime": "2026-09-01T21:00:00+08:00",
+        "status": "pending",
+        "notes": "Rack 4"
+      },
+      {
+        "rack_id": 5,
+        "datetime": "2026-09-02 08:00",
+        "iso_datetime": "2026-09-02T08:00:00+08:00",
+        "status": "pending",
+        "notes": "Rack 5"
+      },
+      {
+        "rack_id": 6,
+        "datetime": "2026-09-02 12:30",
+        "iso_datetime": "2026-09-02T12:30:00+08:00",
+        "status": "pending",
+        "notes": "Rack 6"
+      },
+      {
+        "rack_id": 7,
+        "datetime": "2026-09-02 18:00",
+        "iso_datetime": "2026-09-02T18:00:00+08:00",
+        "status": "pending",
+        "notes": "Rack 7"
+      }
+    ],
+    "patient_name": "SJNHS Student",
+    "rotation_degree": 60,
+    "current_rack": 1,
+    "rack_count": 7,
+    "rack_warning_threshold": 2,
+    "dispense_time": [
+      "08:00",
+      "12:30",
+      "18:00",
+      "21:00",
+      "08:00",
+      "12:30",
+      "18:00"
+    ]
+  },
+  "dispense_logs": [],
+  "intake_logs": []
+}

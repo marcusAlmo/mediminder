@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mediminder by SJNHS - Smart Medicine Dispenser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-area">
+                <div class="logo-icon">💊</div>
+                <div>
+                    <h1>Mediminder by SJNHS</h1>
+                    <p class="subtitle">Smart Medicine Dispenser - IoT Control Hub</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="rtc-badge">
+                    <span class="pulse-dot"></span>
+                    <div>
+                        <div class="rtc-label">ESP32 RTC Sync (PHT / UTC+8)</div>
+                        <div id="rtc-live-clock" class="rtc-time">--:--:--</div>
+                        <div id="rtc-live-date" style="font-size: 0.72rem; color: var(--text-muted);">----/--/--</div>
+                    </div>
+                </div>
+                <div class="status-chip online">
+                    <span class="status-indicator"></span> System Online
+                </div>
+            </div>
+        </header>
+
+        <!-- Notification Banner -->
+        <div id="alert-banner" class="alert-banner hidden"></div>
+
+        <!-- Main Content Grid -->
+        <main class="dashboard-grid">
+            <!-- Left Column: Configuration -->
+            <section class="card config-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <span class="icon">⚙️</span>
+                        <h2>7-Rack Schedule Manager</h2>
+                    </div>
+                    <span class="badge">Live Sync</span>
+                </div>
+                <p class="card-description">Set date & time specific schedules for all 7 storage racks. Sequence progresses automatically from the active rack.</p>
+
+                <form id="config-form" class="config-form">
+                    <div class="form-group">
+                        <label for="patient-name">
+                            <span class="label-text">Patient Name</span>
+                            <span class="label-hint">Who is receiving the medicine</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="patient-name" name="patient_name" placeholder="e.g. Test Patient" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rotation-degree">
+                            <span class="label-text">Rotation Degrees per Rack</span>
+                            <span class="label-hint">Motor step angle (Default: 52°)</span>
+                        </label>
+                        <div class="degree-input-container">
+                            <div class="input-wrapper">
+                                <span class="input-icon">🔄</span>
+                                <input type="number" id="rotation-degree" name="rotation_degree" min="1" max="360" step="1" value="52" required>
+                                <span class="unit-tag">deg (°)</span>
+                            </div>
+                            <div class="degree-presets">
+                                <button type="button" class="preset-btn active" onclick="setDegree(52)">52° (Default)</button>
+                                <button type="button" class="preset-btn" onclick="setDegree(45)">45°</button>
+                                <button type="button" class="preset-btn" onclick="setDegree(60)">60°</button>
+                                <button type="button" class="preset-btn" onclick="setDegree(90)">90°</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7 Racks Date & Time List -->
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label>
+                                <span class="label-text">7 Racks Specific Date & Time</span>
+                                <span class="label-hint">Sequence dispenses Rack 1 → 7</span>
+                            </label>
+                            <button type="button" class="btn-text" onclick="autoFillSchedule()" style="font-size: 0.75rem;">⚡ Auto-Fill 4h Spacing</button>
+                        </div>
+                        
+                        <div id="racks-schedule-list" class="racks-schedule-list">
+                            <!-- Injected dynamically for Racks 1 to 7 -->
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="btn-save-config">
+                            <span>💾 Save & Sync Configuration</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Middle Column: Hardware Simulator & Active Summary -->
+            <section class="card simulator-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <span class="icon">📡</span>
+                        <h2>ESP32 Device Simulator</h2>
+                    </div>
+                    <span class="badge esp32-badge">IoT Endpoint Test</span>
+                </div>
+                <p class="card-description">Simulate hardware interactions with the Flask GET/POST endpoints.</p>
+
+                <!-- Current Active Snapshot -->
+                <div class="device-preview-box">
+                    <div class="preview-header">
+                        <span class="preview-title">Device Cache Preview</span>
+                        <button class="btn-refresh" onclick="fetchCurrentConfig()">🔄 Refresh</button>
+                    </div>
+                    <div class="preview-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Active Patient</span>
+                            <span class="detail-value" id="preview-patient">--</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Next Due Rack</span>
+                            <span class="detail-value highlight" id="preview-next-rack">Rack #1</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Step Angle</span>
+                            <span class="detail-value" id="preview-degree">52°</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Available Racks</span>
+                            <span class="detail-value" id="preview-racks">7 racks</span>
+                        </div>
+                        <div class="detail-item full-width">
+                            <span class="detail-label">Next Scheduled Due (PHT)</span>
+                            <span class="detail-value highlight" id="preview-next-due">--</span>
+                        </div>
+                        <div class="detail-item full-width">
+                            <span class="detail-label">7-Rack Status Sequence</span>
+                            <div class="schedule-tags" id="preview-schedule-tags"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Action Buttons -->
+                <div class="simulation-actions">
+                    <h3>Simulate ESP32 Hardware Actions</h3>
+                    <div class="sim-btn-group">
+                        <button class="btn btn-iot-get" id="btn-sim-get" onclick="simulateEsp32Get()">
+                            <span class="btn-icon">📥</span>
+                            <div class="btn-text-block">
+                                <span class="btn-title">ESP32: GET /api/dispense</span>
+                                <span class="btn-sub">Fetch 7-rack schedule & sync RTC time</span>
+                            </div>
+                        </button>
+
+                        <button class="btn btn-iot-post" id="btn-sim-post" onclick="simulateEsp32Post()">
+                            <span class="btn-icon">📤</span>
+                            <div class="btn-text-block">
+                                <span class="btn-title">ESP32: POST /api/dispense-log</span>
+                                <span class="btn-sub">Dispense active rack & advance sequence</span>
+                            </div>
+                        </button>
+
+                        <button class="btn btn-iot-intake" id="btn-sim-intake" onclick="simulateEsp32Intake()">
+                            <span class="btn-icon">🚪</span>
+                            <div class="btn-text-block">
+                                <span class="btn-title">ESP32: POST /api/intake</span>
+                                <span class="btn-sub">Sonar detected drawer opened</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Response JSON Viewer -->
+                <div class="api-output-box">
+                    <div class="output-header">
+                        <span>Terminal Output / JSON Response</span>
+                        <span id="output-status" class="output-status">Ready</span>
+                    </div>
+                    <pre id="api-output-code" class="code-block">// API responses will display here...</pre>
+                </div>
+            </section>
+
+            <!-- Right Column: Dispensation Logs -->
+            <section class="card logs-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <span class="icon">📋</span>
+                        <h2>Dispensation History</h2>
+                    </div>
+                    <div class="logs-header-actions">
+                        <button class="btn-text" onclick="fetchLogs()">Refresh</button>
+                        <button class="btn-text text-danger" onclick="clearLogs()">Clear</button>
+                    </div>
+                </div>
+                <p class="card-description">Recorded successful dispensation timestamps and rotation events submitted by the ESP32.</p>
+
+                <div class="logs-container" id="logs-container">
+                    <div class="empty-state">
+                        <span class="empty-icon">📭</span>
+                        <p>No dispensations logged yet.</p>
+                        <p class="empty-hint">Simulate a POST request or trigger an ESP32 event to see logs here.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Quick Reference Footer -->
+        <footer class="footer">
+            <div class="endpoint-pills">
+                <span class="pill-label">API Endpoints:</span>
+                <code><span class="method get">GET</span> /api/dispense</code>
+                <code><span class="method post">POST</span> /api/dispense-log</code>
+                <code><span class="method post">POST</span> /api/dispense-schedule</code>
+                <code><span class="method get">GET</span> /api/dispense-logs</code>
+            </div>
+            <div class="footer-branding">
+                <p>Mediminder by SJNHS © 2026 | Smart Medicine Dispenser System</p>
+                <p class="footer-subtitle">Developed with ❤️ for better healthcare management</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        let currentRacks = [];
+        let activeCurrentRack = 1;
+
+        // Live RTC Clock in PHT
+        function updateLiveClock() {
+            const now = new Date();
+            const timeString = now.toTimeString().split(' ')[0];
+            const dateString = now.toISOString().split('T')[0];
+            document.getElementById('rtc-live-clock').innerText = `${timeString} PHT`;
+            document.getElementById('rtc-live-date').innerText = dateString;
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+
+        function showAlert(msg, isError = false) {
+            const banner = document.getElementById('alert-banner');
+            banner.textContent = msg;
+            banner.className = `alert-banner ${isError ? 'error' : 'success'}`;
+            banner.classList.remove('hidden');
+            setTimeout(() => banner.classList.add('hidden'), 4000);
+        }
+
+        function setDegree(val) {
+            document.getElementById('rotation-degree').value = val;
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText.includes(val + '°'));
+            });
+        }
+
+        function renderRacksList() {
+            const container = document.getElementById('racks-schedule-list');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 7; i++) {
+                let rack = currentRacks.find(r => r.rack_id === i) || {
+                    rack_id: i,
+                    datetime: getDefaultDateTimeForRack(i),
+                    status: 'pending',
+                    notes: `Rack ${i}`
+                };
+
+                const isNext = (rack.rack_id === activeCurrentRack && rack.status === 'pending');
+                const card = document.createElement('div');
+                card.className = `rack-card ${isNext ? 'active-next' : ''} ${rack.status}`;
+                card.id = `rack-card-${i}`;
+
+                // Format datetime for datetime-local input (YYYY-MM-DDTHH:MM)
+                const dtValue = rack.datetime ? rack.datetime.replace(' ', 'T').substring(0, 16) : '';
+
+                card.innerHTML = `
+                    <div class="rack-card-header">
+                        <span class="rack-num-badge">Rack #${i}</span>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <span class="rack-status-tag ${isNext ? 'active' : rack.status}">
+                                ${isNext ? '⭐ NEXT DUE' : rack.status.toUpperCase()}
+                            </span>
+                            <button type="button" class="btn-set-active ${isNext ? 'active' : ''}" onclick="setNextRack(${i})">
+                                ${isNext ? 'Active Next' : 'Set as Next'}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="rack-inputs-row">
+                        <input type="datetime-local" id="rack-dt-${i}" value="${dtValue}" onchange="updateRackDateTime(${i}, this.value)">
+                        <select id="rack-status-${i}" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-sm); padding: 8px; font-size: 0.8rem;" onchange="updateRackStatus(${i}, this.value)">
+                            <option value="pending" ${rack.status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="dispensed" ${rack.status === 'dispensed' ? 'selected' : ''}>Dispensed</option>
+                        </select>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function getDefaultDateTimeForRack(idx) {
+            const now = new Date();
+            now.setHours(now.getHours() + (idx * 4));
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd} ${hh}:00`;
+        }
+
+        function setNextRack(rackId) {
+            activeCurrentRack = rackId;
+            let rack = currentRacks.find(r => r.rack_id === rackId);
+            if (rack) rack.status = 'pending';
+            renderRacksList();
+            updatePreview();
+        }
+
+        function updateRackDateTime(rackId, val) {
+            let rack = currentRacks.find(r => r.rack_id === rackId);
+            if (!rack) {
+                rack = { rack_id: rackId, status: 'pending', notes: `Rack ${rackId}` };
+                currentRacks.push(rack);
+            }
+            rack.datetime = val.replace('T', ' ');
+            rack.iso_datetime = val + ':00+08:00';
+            updatePreview();
+        }
+
+        function updateRackStatus(rackId, statusVal) {
+            let rack = currentRacks.find(r => r.rack_id === rackId);
+            if (rack) {
+                rack.status = statusVal;
+                if (statusVal === 'dispensed' && activeCurrentRack === rackId) {
+                    const nextPending = currentRacks.find(r => r.rack_id > rackId && r.status === 'pending');
+                    if (nextPending) activeCurrentRack = nextPending.rack_id;
+                }
+            }
+            renderRacksList();
+            updatePreview();
+        }
+
+        function autoFillSchedule() {
+            const now = new Date();
+            for (let i = 1; i <= 7; i++) {
+                const d = new Date(now.getTime() + (i * 4 * 3600 * 1000));
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const dt = `${yyyy}-${mm}-${dd} ${hh}:00`;
+                let r = currentRacks.find(x => x.rack_id === i);
+                if (r) {
+                    r.datetime = dt;
+                    r.iso_datetime = `${yyyy}-${mm}-${dd}T${hh}:00:00+08:00`;
+                }
+            }
+            renderRacksList();
+            updatePreview();
+            showAlert("⚡ Auto-spaced 7 rack schedule at 4-hour intervals!");
+        }
+
+        function updatePreview() {
+            const nextRack = currentRacks.find(r => r.rack_id === activeCurrentRack && r.status === 'pending') || currentRacks.find(r => r.status === 'pending');
+            const pendingCount = currentRacks.filter(r => r.status === 'pending').length;
+
+            document.getElementById('preview-next-rack').innerText = nextRack ? `Rack #${nextRack.rack_id}` : 'All Dispensed';
+            document.getElementById('preview-next-due').innerText = nextRack ? `${nextRack.datetime} PHT` : 'None pending';
+            document.getElementById('preview-racks').innerText = `${pendingCount} racks remaining` + (pendingCount <= 3 ? ' (LOW)' : '');
+            
+            if (pendingCount <= 3) {
+                document.getElementById('preview-racks').classList.add('text-danger');
+            } else {
+                document.getElementById('preview-racks').classList.remove('text-danger');
+            }
+
+            const tagsBox = document.getElementById('preview-schedule-tags');
+            tagsBox.innerHTML = currentRacks.map(r => `
+                <span class="tag ${r.status === 'dispensed' ? 'dispensed' : (r.rack_id === activeCurrentRack ? 'active' : '')}">
+                    #${r.rack_id}: ${r.datetime ? r.datetime.substring(5) : '--'}
+                </span>
+            `).join('');
+        }
+
+        async function fetchCurrentConfig() {
+            try {
+                const res = await fetch('/api/dispense');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('patient-name').value = data.patient_name;
+                    document.getElementById('rotation-degree').value = data.rotation_degree;
+                    activeCurrentRack = data.current_rack || 1;
+                    currentRacks = data.racks || [];
+
+                    renderRacksList();
+                    updatePreview();
+
+                    document.getElementById('preview-patient').innerText = data.patient_name;
+                    document.getElementById('preview-degree').innerText = data.rotation_degree + '°';
+                }
+            } catch (err) {
+                console.error("Failed to load config:", err);
+            }
+        }
+
+        document.getElementById('config-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const patientName = document.getElementById('patient-name').value.trim();
+            const rotationDegree = parseFloat(document.getElementById('rotation-degree').value);
+
+            const outputBox = document.getElementById('api-output-code');
+            const statusBox = document.getElementById('output-status');
+            statusBox.innerText = 'Saving & Syncing 7-Rack schedule...';
+            statusBox.className = 'output-status loading';
+
+            try {
+                const start = performance.now();
+                const res = await fetch('/api/dispense-schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patient_name: patientName,
+                        rotation_degree: rotationDegree,
+                        current_rack: activeCurrentRack,
+                        racks: currentRacks
+                    })
+                });
+                const duration = Math.round(performance.now() - start);
+                const result = await res.json();
+                if (res.ok) {
+                    statusBox.innerText = `HTTP ${res.status} OK - Saved (${duration}ms)`;
+                    statusBox.className = 'output-status success';
+                    outputBox.innerText = JSON.stringify(result, null, 2);
+                    showAlert("✅ 7-Rack schedule saved & synced! ESP32 can now fetch the updated sequence.");
+                    fetchCurrentConfig();
+                } else {
+                    statusBox.innerText = `HTTP ${res.status} Error`;
+                    statusBox.className = 'output-status error';
+                    outputBox.innerText = JSON.stringify(result, null, 2);
+                    showAlert("❌ Error: " + result.message, true);
+                }
+            } catch (err) {
+                statusBox.innerText = 'Network Error';
+                statusBox.className = 'output-status error';
+                outputBox.innerText = '// Error: ' + err.message;
+                showAlert("❌ Network error saving configuration", true);
+            }
+        });
+
+        async function simulateEsp32Get() {
+            const outputBox = document.getElementById('api-output-code');
+            const statusBox = document.getElementById('output-status');
+            statusBox.innerText = 'Calling GET /api/dispense...';
+            statusBox.className = 'output-status loading';
+
+            try {
+                const start = performance.now();
+                const res = await fetch('/api/dispense');
+                const duration = Math.round(performance.now() - start);
+                const data = await res.json();
+
+                statusBox.innerText = `HTTP ${res.status} OK (${duration}ms)`;
+                statusBox.className = 'output-status success';
+                outputBox.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                statusBox.innerText = 'Request Failed';
+                statusBox.className = 'output-status error';
+                outputBox.innerText = '// Error: ' + err.message;
+            }
+        }
+
+        async function simulateEsp32Post() {
+            const outputBox = document.getElementById('api-output-code');
+            const statusBox = document.getElementById('output-status');
+            statusBox.innerText = 'Calling POST /api/dispense-log...';
+            statusBox.className = 'output-status loading';
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                patient_name: document.getElementById('patient-name').value || "Test Patient",
+                rotation_degree: parseInt(document.getElementById('rotation-degree').value) || 52,
+                rack_id: activeCurrentRack,
+                slot: activeCurrentRack,
+                status: "success",
+                notes: `Rack #${activeCurrentRack} dispensed successfully`
+            };
+
+            try {
+                const start = performance.now();
+                const res = await fetch('/api/dispense-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const duration = Math.round(performance.now() - start);
+                const data = await res.json();
+
+                statusBox.innerText = `HTTP ${res.status} Created (${duration}ms)`;
+                statusBox.className = 'output-status success';
+                outputBox.innerText = JSON.stringify(data, null, 2);
+                showAlert(`💊 ESP32 logged successful dispensation for Rack #${payload.rack_id}!`);
+                fetchCurrentConfig();
+                fetchLogs();
+            } catch (err) {
+                statusBox.innerText = 'Request Failed';
+                statusBox.className = 'output-status error';
+                outputBox.innerText = '// Error: ' + err.message;
+            }
+        }
+
+        async function simulateEsp32Intake() {
+            const outputBox = document.getElementById('api-output-code');
+            const statusBox = document.getElementById('output-status');
+            statusBox.innerText = 'Calling POST /api/intake...';
+            statusBox.className = 'output-status loading';
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                patient_name: document.getElementById('patient-name').value || "Test Patient",
+                rack_id: activeCurrentRack,
+                slot: activeCurrentRack,
+                notes: "HC-SR04 Sonar sensor detected patient opened drawer at 28.5 cm distance"
+            };
+
+            try {
+                const start = performance.now();
+                const res = await fetch('/api/intake', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const duration = Math.round(performance.now() - start);
+                const data = await res.json();
+
+                statusBox.innerText = `HTTP ${res.status} Created (${duration}ms)`;
+                statusBox.className = 'output-status success';
+                outputBox.innerText = JSON.stringify(data, null, 2);
+                showAlert("🚪 Patient intake confirmed & recorded!");
+                fetchLogs();
+            } catch (err) {
+                statusBox.innerText = 'Request Failed';
+                statusBox.className = 'output-status error';
+                outputBox.innerText = '// Error: ' + err.message;
+            }
+        }
+
+        async function fetchLogs() {
+            const container = document.getElementById('logs-container');
+            try {
+                const res = await fetch('/api/dispense-logs');
+                const data = await res.json();
+                if (data.logs && data.logs.length > 0) {
+                    container.innerHTML = data.logs.map(log => `
+                        <div class="log-item">
+                            <div class="log-item-header">
+                                <span class="log-badge ${log.status}">${log.status.toUpperCase()}</span>
+                                <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()} (${new Date(log.timestamp).toLocaleDateString()})</span>
+                            </div>
+                            <div class="log-details">
+                                <div class="log-detail-row">
+                                    <span class="label">Patient:</span>
+                                    <span class="val font-bold">${log.patient_name}</span>
+                                </div>
+                                <div class="log-detail-row">
+                                    <span class="label">Rack:</span>
+                                    <span class="val highlight font-bold">Rack #${log.rack_id || log.slot || 1}</span>
+                                </div>
+                                <div class="log-detail-row">
+                                    <span class="label">Rotation:</span>
+                                    <span class="val">${log.rotation_degree}° angle</span>
+                                </div>
+                                <div class="log-notes">${log.notes || ''}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span class="empty-icon">📭</span>
+                            <p>No dispensations logged yet.</p>
+                            <p class="empty-hint">Simulate a POST request or trigger an ESP32 event to see logs here.</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error("Failed to load logs:", err);
+            }
+        }
+
+        async function clearLogs() {
+            if (confirm("Are you sure you want to clear all dispensation logs?")) {
+                await fetch('/api/dispense-logs', { method: 'DELETE' });
+                fetchLogs();
+                showAlert("Logs cleared.");
+            }
+        }
+
+        // Init
+        fetchCurrentConfig();
+        fetchLogs();
+    </script>
+</body>
+</html>
