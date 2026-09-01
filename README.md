@@ -35,17 +35,15 @@ mediminder/
 ├── server/                       # Backend API Server
 │   ├── app.py                   # Flask API with security enhancements
 │   ├── requirements.txt         # Python dependencies
-│   ├── templates/               # HTML templates
-│   │   └── index.html          # Web dashboard UI
 │   ├── data/                    # Text file storage (single user)
 │   │   └── data.json           # Config and logs
-│   ├── static/                  # Static assets
-│   │   ├── manifest.json       # PWA manifest
-│   │   ├── sw.js               # Service Worker
-│   │   ├── offline.html        # Offline fallback
-│   │   └── style.css           # Dashboard styling
-│   └── templates/               # HTML templates
-│       └── dashboard.html      # Web dashboard UI
+│   ├── templates/               # HTML templates
+│   │   └── dashboard.html      # Web dashboard UI
+│   └── static/                  # Static assets
+│       ├── manifest.json       # PWA manifest
+│       ├── sw.js               # Service Worker
+│       ├── offline.html        # Offline fallback
+│       └── style.css           # Dashboard styling
 └── README.md                    # This file
 ```
 

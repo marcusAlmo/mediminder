@@ -64,8 +64,8 @@
 // Passive Buzzer
 #define BUZZER_PIN       19
 
-// LED Bulb Relay
-#define LED_RELAY_PIN    23
+// LED Bulb Relay (DISABLED - using buzzer alarm instead)
+// #define LED_RELAY_PIN    23
 
 // ============================================================================
 // DEBUG & PERFORMANCE MONITORING
@@ -401,6 +401,19 @@ void buzzTone(unsigned int freq, unsigned long durMs) {
   }
 }
 
+// --- High-Pitch Alarm Buzzer with Micro Pauses (alarm pattern) ---
+// Creates an alarm effect: high-pitch beeps with micro pauses between each sound
+void alarmBuzzer(unsigned long durationMs, unsigned int freq = 2000) {
+  unsigned long startMs = millis();
+  unsigned int beepDurMs = 150;      // Each beep duration: 150 ms
+  unsigned int pauseDurMs = 80;      // Micro pause between beeps: 80 ms
+  
+  while (millis() - startMs < durationMs) {
+    buzzTone(freq, beepDurMs);        // High-pitch beep
+    delay(pauseDurMs);                // Micro pause
+  }
+}
+
 // --- HC-SR04 Sonar ---
 float sonarReadCm() {
   digitalWrite(SONAR_TRIG_PIN, LOW);  delayMicroseconds(4);
@@ -445,6 +458,67 @@ void lcdPrint(const char* row0, const char* row1) {
 String lcdFit(String s) {
   while (s.length() < 16) s += ' ';
   return s.substring(0, 16);
+}
+
+// --- Large font "MEDIMINDER" using both LCD rows ---
+void animateScrollingMediminder() {
+  // Create custom large characters using block patterns
+  // Top half of letters (Row 0)
+  const char* topRow =    "MMM EEE DDD III NNN DDD EEE RRR";
+  // Bottom half of letters (Row 1)
+  const char* bottomRow = "M M E   D D  I  NN D D E   R R ";
+  
+  // Display large "MEDIMINDER" split across two rows
+  lcd.clear();
+  
+  // Row 0: Top half
+  lcd.setCursor(0, 0);
+  lcd.print("MMM EEE DDD III");
+  
+  // Row 1: Bottom half
+  lcd.setCursor(0, 1);
+  lcd.print("M M E   D D  I ");
+  
+  delay(2000);
+  
+  // Scroll effect: shift left gradually
+  for (int shift = 0; shift < 16; shift++) {
+    lcd.clear();
+    
+    // Row 0: Top half with scroll
+    lcd.setCursor(0, 0);
+    if (shift < 15) {
+      lcd.print("MMM EEE DDD III");
+      if (shift < 1) lcd.print("N");
+    } else {
+      lcd.print("MM EEE DDD IIIN");
+    }
+    
+    // Row 1: Bottom half with scroll
+    lcd.setCursor(0, 1);
+    if (shift < 15) {
+      lcd.print("M M E   D D  I ");
+      if (shift < 1) lcd.print("N");
+    } else {
+      lcd.print("M M E   D D  IN");
+    }
+    
+    delay(150);
+  }
+  
+  // Display "by SJNHS" in large font
+  delay(500);
+  lcd.clear();
+  
+  // Row 0: "by" (centered)
+  lcd.setCursor(6, 0);
+  lcd.print("by");
+  
+  // Row 1: "SJNHS" (centered)
+  lcd.setCursor(5, 1);
+  lcd.print("SJNHS");
+  
+  delay(2000);
 }
 
 // ============================================================================
@@ -819,21 +893,13 @@ void runDispenseCycle(int rackId) {
   servoWrite(0, 500);
   logOk("STEP-5", "Pill cover closed and locked.");
 
-  // --- STEP 6: High-frequency buzzer & External LED Light for 10 seconds ---
-  logInfo("STEP-6", "Activating external LED light (GPIO 23) and 1 kHz buzzer for 10s...");
-  lcdPrint("! MEDICINE RDY !", "LED & Buzzer... ");
+  // --- STEP 6: High-pitch alarm buzzer with micro pauses for 10 seconds ---
+  logInfo("STEP-6", "Activating high-pitch alarm buzzer for 10s...");
+  lcdPrint("! MEDICINE RDY !", "Alarm Buzzer... ");
 
-  // Pulse external LED light and buzzer in sync (500 ms ON / 200 ms OFF) for 10 s total
-  unsigned long buzzStart = millis();
-  while (millis() - buzzStart < BUZZER_ALERT_MS) {
-    digitalWrite(LED_RELAY_PIN, HIGH);
-    buzzTone(BUZZER_HIGH_FREQ, 500);
-    digitalWrite(LED_RELAY_PIN, LOW);
-    delay(200);
-  }
-  // Keep external LED light solid ON to illuminate tray for patient retrieval
-  digitalWrite(LED_RELAY_PIN, HIGH);
-  logOk("STEP-6", "Buzzer alert complete. External LED light ON to illuminate medication tray.");
+  // Play high-pitch alarm with micro pauses for 10 s total
+  alarmBuzzer(BUZZER_ALERT_MS, 2000);  // 2 kHz high-pitch alarm
+  logOk("STEP-6", "Alarm buzzer complete. Medicine ready for patient retrieval.");
 
   // POST dispense log (with rack_count decrement and sequence progression on server)
   postDispenseLog(activeDispenseRack);
@@ -870,18 +936,11 @@ void handleMedReadyState() {
   // --- STEP 8: Repeat alarm every 60 s if med still not taken ---
   if (now - lastRepeatAlarmMs >= REPEAT_ALARM_INTERVAL) {
     lastRepeatAlarmMs = now;
-    logWarn("ALARM", "Medicine not yet taken – repeating reminder with external LED strobe!");
+    logWarn("ALARM", "Medicine not yet taken – repeating reminder with high-pitch alarm!");
     lcdPrint("! REMINDER !    ", "Take Your Meds! ");
     
-    // Strobe external LED light with triple alert beeps
-    for (int i = 0; i < 3; i++) {
-      digitalWrite(LED_RELAY_PIN, HIGH);
-      buzzTone(BUZZER_HIGH_FREQ, 200);
-      digitalWrite(LED_RELAY_PIN, LOW);
-      delay(150);
-    }
-    // Re-enable solid external LED light illumination
-    digitalWrite(LED_RELAY_PIN, HIGH);
+    // Play high-pitch alarm with micro pauses for 3 seconds
+    alarmBuzzer(3000, 2000);  // 2 kHz high-pitch alarm for 3 seconds
 
     // Restore med-ready message
     char row1[17];
@@ -908,11 +967,7 @@ void handleMedReadyState() {
                  " Distance: %.1f cm (baseline was %.1f cm). Intake confirmed!\n",
                  dist, sonarBaselineDistCm);
 
-    // Turn OFF external LED light
-    digitalWrite(LED_RELAY_PIN, LOW);
-    logInfo("LED", "External LED light turned OFF (drawer opened / med retrieved).");
-
-    // Brief confirmation chime
+    // Brief confirmation chime (two-tone)
     buzzTone(BUZZER_HIGH_FREQ, 100); delay(60);
     buzzTone(BUZZER_HIGH_FREQ * 2, 150);
 
@@ -991,7 +1046,6 @@ void setup() {
   pinMode(SONAR_ECHO_PIN, INPUT);
 
   pinMode(BUZZER_PIN,    OUTPUT);   digitalWrite(BUZZER_PIN,    LOW);
-  pinMode(LED_RELAY_PIN, OUTPUT);   digitalWrite(LED_RELAY_PIN, LOW);
   pinMode(SERVO_PIN,     OUTPUT);   digitalWrite(SERVO_PIN,     LOW);
 
   // I2C + LCD
@@ -1003,6 +1057,12 @@ void setup() {
 #endif
   lcd.init();
   lcd.backlight();
+  
+  // Animated scrolling "MEDIMINDER" across both rows
+  animateScrollingMediminder();
+  delay(500);
+  
+  // Show splash screen
   lcdPrint("Mediminder      ", "by SJNHS        ");
   delay(2000);
   lcdPrint("Initializing... ", "Please wait...  ");

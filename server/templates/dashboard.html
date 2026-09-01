@@ -1092,10 +1092,59 @@
             document.getElementById('installPrompt').classList.add('hidden');
         }
 
+        // Format ISO timestamp to "Monday, Jan 1, 2026 at 8:00 AM"
+        function formatIsoToReadable(isoStr) {
+            if (!isoStr) return 'N/A';
+            try {
+                const date = new Date(isoStr);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Manila' });
+                const monthName = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'Asia/Manila' });
+                const dayNum = date.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'Asia/Manila' });
+                const yearNum = date.toLocaleDateString('en-US', { year: 'numeric', timeZone: 'Asia/Manila' });
+
+                let hours = date.toLocaleDateString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' });
+                let hourNum = parseInt(hours, 10);
+                const ampm = hourNum >= 12 ? 'PM' : 'AM';
+                hourNum = hourNum % 12 || 12;
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+
+                return `${dayName}, ${monthName} ${dayNum}, ${yearNum} at ${hourNum}:${minutes} ${ampm}`;
+            } catch (err) {
+                console.warn('Failed to format ISO datetime:', isoStr, err);
+                return isoStr;
+            }
+        }
+
+        // Format "YYYY-MM-DD HH:MM" to "Monday, Jan 1, 2026 at 8:00 AM"
+        function formatDateTimeReadable(datetimeStr) {
+            if (!datetimeStr) return 'N/A';
+            try {
+                const [datePart, timePart] = datetimeStr.split(' ');
+                const [year, month, day] = datePart.split('-');
+                const [hour, minute] = timePart.split(':');
+                const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`);
+
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+                const monthName = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+                const dayNum = date.getUTCDate();
+                const yearNum = date.getUTCFullYear();
+
+                let hourNum = parseInt(hour);
+                const ampm = hourNum >= 12 ? 'PM' : 'AM';
+                hourNum = hourNum % 12 || 12;
+                const timeStr = `${hourNum}:${minute} ${ampm}`;
+
+                return `${dayName}, ${monthName} ${dayNum}, ${yearNum} at ${timeStr}`;
+            } catch (err) {
+                console.warn('Failed to format datetime:', datetimeStr, err);
+                return datetimeStr;
+            }
+        }
+
         /* ============ LIVE CLOCK ============ */
         function updateClock() {
             const now = new Date();
-            const timeString = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeString = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
             document.getElementById('statTime').textContent = timeString;
         }
         setInterval(updateClock, 1000);
@@ -1111,6 +1160,14 @@
                     document.getElementById('statPatient').textContent = data.patient_name;
                     document.getElementById('statNextRack').textContent = `Rack #${data.current_rack}`;
                     document.getElementById('statRacksLeft').textContent = data.rack_count;
+
+                    // Show next scheduled dispense with full date and time
+                    const nextDispenseEl = document.getElementById('statusMessage');
+                    if (data.next_rack_datetime) {
+                        nextDispenseEl.innerHTML = `<strong>Next Scheduled Dispense:</strong> Rack #${data.current_rack} on ${formatDateTimeReadable(data.next_rack_datetime)}`;
+                    } else {
+                        nextDispenseEl.innerHTML = '<strong>All racks dispensed.</strong>';
+                    }
 
                     document.getElementById('patientName').value = data.patient_name;
                     document.getElementById('rotationDegree').value = data.rotation_degree;
@@ -1139,7 +1196,7 @@
 
                 if (data.iot_online) {
                     document.getElementById('statusMessage').innerHTML =
-                        `Connected to ESP32. Last seen <strong>${data.iot_last_seen_seconds_ago}s</strong> ago. Next dose: <strong>${data.next_dose || 'N/A'}</strong>`;
+                        `Connected to ESP32. Last seen <strong>${data.iot_last_seen_seconds_ago}s</strong> ago. Next dispense: <strong>${formatDateTimeReadable(data.next_dose)}</strong>`;
                     espPill.classList.remove('offline');
                     espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Online</span>`;
                     navPill.classList.remove('offline');
@@ -1176,6 +1233,9 @@
                         <div class="rack-header">
                             <span class="rack-badge">Rack #${rack.rack_id}</span>
                             <span class="rack-status ${rack.status}">${rack.status.toUpperCase()}</span>
+                        </div>
+                        <div class="rack-datetime mb-2" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">
+                            ${formatDateTimeReadable(rack.datetime)}
                         </div>
                         <div class="row g-2">
                             <div class="col-md-6">
@@ -1298,7 +1358,7 @@
                     container.innerHTML = data.logs.map(log => `
                         <div class="log-item ${log.status}">
                             <div class="log-time">
-                                <i class="bi bi-calendar3"></i> ${new Date(log.timestamp).toLocaleString('en-PH')}
+                                ${formatIsoToReadable(log.timestamp)}
                             </div>
                             <div class="log-message">
                                 ${log.patient_name} — Rack #${log.rack_id} (${log.rotation_degree}°)
@@ -1332,7 +1392,7 @@
         }
 
         /* ============ INIT ============ */
-        document.getElementById('lastUpdate').textContent = new Date().toLocaleString('en-PH');
+        document.getElementById('lastUpdate').textContent = formatIsoToReadable(new Date().toISOString());
         loadData();
         checkEsp32Status();
         loadLogs();

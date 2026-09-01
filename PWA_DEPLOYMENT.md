@@ -21,9 +21,8 @@ server/
 │   ├── offline.html      # Offline fallback page
 │   └── style.css         # Existing styles
 ├── templates/
-│   ├── dashboard.html    # New server-rendered UI
-│   └── index.html        # Old UI (can be removed)
-└── app.py                # Updated with PWA support
+│   └── dashboard.html    # Web dashboard UI
+└── app.py                # Flask API with PWA support
 ```
 
 ## 🔧 Quick Start
