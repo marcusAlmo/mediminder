@@ -953,7 +953,7 @@ def iot_sync_status():
         try:
             last_fetch = datetime.fromisoformat(iot_last_fetch_at)
             iot_last_seen_seconds_ago = int((datetime.now(PHT) - last_fetch).total_seconds())
-            iot_online = iot_last_seen_seconds_ago <= 25  # 2.5x the 10s poll interval
+            iot_online = iot_last_seen_seconds_ago <= 15  # 1.5x the 10s poll interval
         except ValueError:
             iot_last_seen_seconds_ago = None
 

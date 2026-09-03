@@ -1953,7 +1953,7 @@
                     navPill.innerHTML = `<span class="status-dot"></span><span class="pill-text">Online</span>`;
                 } else {
                     document.getElementById('statusMessage').innerHTML =
-                        `<strong>ESP32 Offline:</strong> No signal received in the last 25s. Next scheduled check should arrive within 10s.`;
+                        `<strong>ESP32 Offline:</strong> No signal received in the last 15s. Next scheduled check should arrive within 10s.`;
                     espPill.classList.add('offline');
                     espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Offline</span>`;
                     navPill.classList.add('offline');
