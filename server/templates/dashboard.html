@@ -108,6 +108,7 @@
         [data-theme="dark"] .rack-status.dispensed { background: rgba(88, 204, 2, 0.18); border-color: rgba(88, 204, 2, 0.35); }
         [data-theme="dark"] .rack-status.pending   { background: rgba(255, 200, 0, 0.18); border-color: rgba(255, 200, 0, 0.35); color: #FFC800; }
         [data-theme="dark"] .rack-status.taken     { background: rgba(28, 176, 246, 0.18); border-color: rgba(28, 176, 246, 0.35); color: #5DCCFF; }
+        [data-theme="dark"] .rack-status.skipped   { background: rgba(100, 100, 100, 0.18); border-color: rgba(100, 100, 100, 0.35); color: #999; }
 
         /* Alerts */
         [data-theme="dark"] .alert-info    { background: rgba(255, 200, 0, 0.10); border-color: rgba(255, 200, 0, 0.30); }
@@ -865,6 +866,7 @@
         .rack-status.dispensed { color: var(--accent-green); background: #E8F9D9; border-color: #B8E87A; }
         .rack-status.pending   { color: #E8A000; background: #FFF5CC; border-color: #FFD740; }
         .rack-status.taken     { color: var(--accent-blue); background: #E3F3FF; border-color: #A8D8FF; }
+        .rack-status.skipped   { color: #999; background: #F5F5F5; border-color: #DDD; }
 
         /* ============ LOGS ============ */
         .log-item {
@@ -2045,6 +2047,7 @@
                                         <option value="pending" ${rack.status === 'pending' ? 'selected' : ''}>Pending</option>
                                         <option value="dispensed" ${rack.status === 'dispensed' ? 'selected' : ''}>Dispensed</option>
                                         <option value="taken" ${rack.status === 'taken' ? 'selected' : ''}>Taken</option>
+                                        <option value="skipped" ${rack.status === 'skipped' ? 'selected' : ''}>Skipped</option>
                                     </select>
                                 </div>
                                 <div>
@@ -2118,7 +2121,7 @@
             const idx = racks.findIndex(r => r.rackId === rackId);
             if (idx === -1) return;
 
-            // Every rack BEFORE this one must already be dispensed or taken
+            // Every rack BEFORE this one must already be dispensed, taken, or skipped
             for (let i = 0; i < idx; i++) {
                 if (racks[i].status === 'pending') {
                     showToast(
@@ -2322,13 +2325,13 @@
                 }
             }
 
-            // 3. Status must be sequential — no pending rack before a dispensed/taken rack
+            // 3. Status must be sequential — no pending rack before a dispensed/taken/skipped rack
             let seenPending = false;
             for (const r of domRacks) {
                 if (r.status === 'pending') {
                     seenPending = true;
                 } else if (seenPending && r.status !== 'pending') {
-                    // A dispensed/taken rack follows a pending one — that's a skip
+                    // A dispensed/taken/skipped rack follows a pending one — that's a skip
                     showToast(
                         `Cannot set Rack #${r.rackId} to "${r.status}" — earlier racks are still pending`,
                         'error'

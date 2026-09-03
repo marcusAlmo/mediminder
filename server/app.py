@@ -361,6 +361,17 @@ def get_dispense_schedule():
     now = datetime.now(PHT)
     pending_racks_sorted = sorted(pending_racks, key=lambda r: r["rack_id"])
     
+    # Mark any pending racks whose datetime has passed as "skipped"
+    for r in racks:
+        if r.get("status") == "pending" and "datetime" in r:
+            rack_time = datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT)
+            if rack_time < now:
+                r["status"] = "skipped"
+    
+    # Recompute pending_racks after marking skipped ones
+    pending_racks = [r for r in racks if r.get("status") == "pending"]
+    pending_racks_sorted = sorted(pending_racks, key=lambda r: r["rack_id"])
+    
     # First priority: Find next pending rack with future datetime
     next_rack_obj = next(
         (r for r in pending_racks_sorted
@@ -726,7 +737,7 @@ def update_dispense_schedule():
 
             # Sanitize status and notes
             status = sanitize_string(item.get("status", "pending"), 20)
-            if status not in ["pending", "dispensed", "taken"]:
+            if status not in ["pending", "dispensed", "taken", "skipped"]:
                 status = "pending"
             
             notes = sanitize_string(item.get("notes", f"Rack {rack_id}"), 200)

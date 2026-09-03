@@ -6,31 +6,31 @@
         "datetime": "2026-09-03 08:00",
         "iso_datetime": "2026-09-03T08:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 1 Medication Dose",
+        "notes": "Rack 1",
         "drugs": []
       },
       {
         "rack_id": 2,
-        "datetime": "2026-09-03 12:30",
-        "iso_datetime": "2026-09-03T12:30:00+08:00",
+        "datetime": "2026-09-03 12:00",
+        "iso_datetime": "2026-09-03T12:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 2 Medication Dose",
+        "notes": "Rack 2",
         "drugs": []
       },
       {
         "rack_id": 3,
-        "datetime": "2026-09-03 18:00",
-        "iso_datetime": "2026-09-03T18:00:00+08:00",
+        "datetime": "2026-09-03 16:00",
+        "iso_datetime": "2026-09-03T16:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 3 Medication Dose",
+        "notes": "Rack 3",
         "drugs": []
       },
       {
         "rack_id": 4,
-        "datetime": "2026-09-03 21:00",
-        "iso_datetime": "2026-09-03T21:00:00+08:00",
+        "datetime": "2026-09-03 18:00",
+        "iso_datetime": "2026-09-03T18:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 4 Medication Dose",
+        "notes": "Rack 4",
         "drugs": []
       },
       {
@@ -38,15 +38,15 @@
         "datetime": "2026-09-04 08:00",
         "iso_datetime": "2026-09-04T08:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 5 Medication Dose",
+        "notes": "Rack 5",
         "drugs": []
       },
       {
         "rack_id": 6,
-        "datetime": "2026-09-04 12:30",
-        "iso_datetime": "2026-09-04T12:30:00+08:00",
+        "datetime": "2026-09-04 12:00",
+        "iso_datetime": "2026-09-04T12:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 6 Medication Dose",
+        "notes": "Rack 6",
         "drugs": []
       },
       {
@@ -54,7 +54,7 @@
         "datetime": "2026-09-04 18:00",
         "iso_datetime": "2026-09-04T18:00:00+08:00",
         "status": "pending",
-        "notes": "Rack 7 Medication Dose",
+        "notes": "Rack 7",
         "drugs": []
       }
     ],
@@ -65,14 +65,14 @@
     "rack_warning_threshold": 2,
     "dispense_time": [
       "08:00",
-      "12:30",
+      "12:00",
+      "16:00",
       "18:00",
-      "21:00",
       "08:00",
-      "12:30",
+      "12:00",
       "18:00"
     ],
-    "last_updated_at": "2026-09-03T16:55:10.793453+08:00",
+    "last_updated_at": "2026-09-03T16:57:09.748936+08:00",
     "patient_age": "",
     "patient_sickness": ""
   }
