@@ -1442,6 +1442,9 @@
                         </div>
                     </div>
 
+                    <button class="btn btn-primary w-100 mb-2" onclick="saveSettings()">
+                        <i class="bi bi-check-circle-fill"></i> Save Settings
+                    </button>
                     <button class="btn btn-secondary w-100" onclick="installApp()">
                         <i class="bi bi-download"></i> Install as App
                     </button>
@@ -1948,7 +1951,7 @@
                     navPill.innerHTML = `<span class="status-dot"></span><span class="pill-text">Online</span>`;
                 } else {
                     document.getElementById('statusMessage').innerHTML =
-                        `<strong>ESP32 Offline:</strong> No signal received in the last 30s. Next scheduled check should arrive within 15s.`;
+                        `<strong>ESP32 Offline:</strong> No signal received in the last 25s. Next scheduled check should arrive within 10s.`;
                     espPill.classList.add('offline');
                     espPill.innerHTML = `<span class="status-dot"></span><span>ESP32 Offline</span>`;
                     navPill.classList.add('offline');
@@ -2092,25 +2095,18 @@
             const idx = racks.findIndex(r => r.rackId === rackId);
             if (idx === -1) return;
 
-            const revert = () => { racks[idx].dtInput.value = ''; };
-
-            // Check previous rack datetime
+            // Soft-warn only — do NOT revert the input; final validation is in saveSchedule()
             if (idx > 0) {
                 const prev = racks[idx - 1];
                 if (prev.datetime && newValue && newValue < prev.datetime) {
-                    showToast(`Rack #${rackId} cannot be earlier than Rack #${prev.rackId}`, 'error');
-                    revert();
-                    return;
+                    showToast(`Rack #${rackId} is before Rack #${prev.rackId} — fix before saving`, 'info');
                 }
             }
 
-            // Check next rack datetime
             if (idx < racks.length - 1) {
                 const next = racks[idx + 1];
                 if (next.datetime && newValue && newValue > next.datetime) {
-                    showToast(`Rack #${rackId} cannot be later than Rack #${next.rackId}`, 'error');
-                    revert();
-                    return;
+                    showToast(`Rack #${rackId} is after Rack #${next.rackId} — fix before saving`, 'info');
                 }
             }
         }
@@ -2232,14 +2228,23 @@
             }
         }
 
+        // Format a local Date to "YYYY-MM-DDTHH:MM" for datetime-local inputs
+        function toLocalDatetimeValue(date) {
+            const Y = date.getFullYear();
+            const M = String(date.getMonth() + 1).padStart(2, '0');
+            const D = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const m = String(date.getMinutes()).padStart(2, '0');
+            return `${Y}-${M}-${D}T${h}:${m}`;
+        }
+
         function autoFillSchedule() {
             const now = new Date();
             const inputs = document.querySelectorAll('input[type="datetime-local"]');
 
             inputs.forEach((input, index) => {
                 const date = new Date(now.getTime() + (index + 1) * 4 * 3600 * 1000);
-                const isoString = date.toISOString().slice(0, 16);
-                input.value = isoString;
+                input.value = toLocalDatetimeValue(date);
             });
 
             showToast('Schedule auto-filled with 4-hour spacing', 'success');
@@ -2249,18 +2254,13 @@
             const inputs = document.querySelectorAll('input[type="datetime-local"]');
             const times = ['06:30', '11:30', '18:30']; // 6:30am, 11:30am, 6:30pm
             const today = new Date();
-            
+
             inputs.forEach((input, index) => {
                 const daysOffset = Math.floor(index / 3);
                 const timeIndex = index % 3;
-                const date = new Date(today.getTime() + daysOffset * 24 * 3600 * 1000);
-                
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const time = times[timeIndex];
-                
-                input.value = `${year}-${month}-${day}T${time}`;
+                const [h, m] = times[timeIndex].split(':').map(Number);
+                const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysOffset, h, m);
+                input.value = toLocalDatetimeValue(date);
             });
 
             showToast('Schedule set to 3x daily (6:30am, 11:30am, 6:30pm)', 'success');
@@ -2270,18 +2270,13 @@
             const inputs = document.querySelectorAll('input[type="datetime-local"]');
             const times = ['06:30', '18:30']; // 6:30am, 6:30pm
             const today = new Date();
-            
+
             inputs.forEach((input, index) => {
                 const daysOffset = Math.floor(index / 2);
                 const timeIndex = index % 2;
-                const date = new Date(today.getTime() + daysOffset * 24 * 3600 * 1000);
-                
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const time = times[timeIndex];
-                
-                input.value = `${year}-${month}-${day}T${time}`;
+                const [h, m] = times[timeIndex].split(':').map(Number);
+                const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysOffset, h, m);
+                input.value = toLocalDatetimeValue(date);
             });
 
             showToast('Schedule set to 2x daily (6:30am, 6:30pm)', 'success');
@@ -2289,18 +2284,11 @@
 
         function scheduleDaily() {
             const inputs = document.querySelectorAll('input[type="datetime-local"]');
-            const time = '06:30'; // 6:30am
             const today = new Date();
-            
+
             inputs.forEach((input, index) => {
-                const daysOffset = index;
-                const date = new Date(today.getTime() + daysOffset * 24 * 3600 * 1000);
-                
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                
-                input.value = `${year}-${month}-${day}T${time}`;
+                const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + index, 6, 30);
+                input.value = toLocalDatetimeValue(date);
             });
 
             showToast('Schedule set to daily at 6:30am', 'success');
@@ -2549,6 +2537,36 @@
                 await new Promise(resolve => setTimeout(resolve, 1500));
             }
             showSyncTimeout();
+        }
+
+        async function saveSettings() {
+            const rotDeg = parseInt(document.getElementById('rotationDegree').value);
+            const threshold = parseInt(document.getElementById('rackThreshold').value);
+
+            if (isNaN(rotDeg) || rotDeg < 1 || rotDeg > 360) {
+                showToast('Rotation degree must be between 1 and 360', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/dispense-schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rotation_degree: rotDeg,
+                        rack_warning_threshold: threshold
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showToast('Settings saved — ESP32 will sync on next poll', 'success');
+                    loadData();
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error saving settings: ' + error.message, 'error');
+            }
         }
 
         /* ============ INIT ============ */

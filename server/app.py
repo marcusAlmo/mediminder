@@ -494,9 +494,9 @@ def submit_dispensation():
     if pending_after:
         dispenser_config["current_rack"] = pending_after[0]["rack_id"]
     else:
-        # Wrap or find any remaining pending rack
+        # Wrap back to 1 (next refill cycle) or find any remaining pending rack before this slot
         any_pending = [r for r in racks if r.get("status") == "pending"]
-        dispenser_config["current_rack"] = any_pending[0]["rack_id"] if any_pending else None
+        dispenser_config["current_rack"] = any_pending[0]["rack_id"] if any_pending else 1
 
     # Count available storage racks (dispensed or taken)
     rack_count = len([r for r in racks if r.get("status") in ["dispensed", "taken"]])
@@ -942,7 +942,7 @@ def iot_sync_status():
         try:
             last_fetch = datetime.fromisoformat(iot_last_fetch_at)
             iot_last_seen_seconds_ago = int((datetime.now(PHT) - last_fetch).total_seconds())
-            iot_online = iot_last_seen_seconds_ago <= 30  # 2x the 15s poll interval
+            iot_online = iot_last_seen_seconds_ago <= 25  # 2.5x the 10s poll interval
         except ValueError:
             iot_last_seen_seconds_ago = None
 

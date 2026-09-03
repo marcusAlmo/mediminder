@@ -1,31 +1,79 @@
 /*
- * Mediminder - Smart Medicine Dispenser by SJNHS
  * ============================================================================
- * Hardware Pinout (From Schematic):
- *   1. Microstepper (ULN2003) : IN1=GPIO 26, IN2=GPIO 27, IN3=GPIO 25, IN4=GPIO 32
- *   2. Sonar (HC-SR04)        : TRIG=GPIO 5, ECHO=GPIO 18 (with Voltage Divider)
- *   3. Character LCD (I2C)    : SDA=GPIO 21, SCL=GPIO 22 (Address: 0x27 / 5V VCC)
- *   4. RTC Clock (DS3231)     : SDA=GPIO 21, SCL=GPIO 22 (3V3 VCC)
- *   5. Passive Buzzer         : Signal=GPIO 19
- *   6. LED Bulb (Relay)       : IN/Signal=GPIO 23
- *   7. Servo Motor            : Signal=GPIO 13 (External Power)
+ *  Mediminder – Smart Automatic Medicine Dispenser
+ *  Developed by SJNHS (San Jose National High School)
+ * ============================================================================
  *
- * Dispenser Logic Flow:
- *   1.  Poll GET /api/dispense every 15 seconds for config + RTC sync (with retry & fallback)
- *   2.  Display RTC time (refreshes every second); every 10s show patient + next dispense
- *   3.  On schedule match: rotate microstepper 52 degrees (CW)
- *   4.  Raise servo to 90° (open pill cover)
- *   5.  Hold 5 seconds, then return servo to 0° (close cover)
- *   6.  Play high-frequency buzzer for 10 seconds; POST dispense log (decrements rack)
- *   7.  LCD: "Medicine Ready, <patient name>"
- *   8.  After 1 minute, repeat alarm that medicine is ready
- *   9.  When sonar detects drawer opening (distance increases), stop alarm loop
- *  10.  POST intake log (drawer opened = confirmed medication intake)
+ *  PURPOSE
+ *  -------
+ *  Mediminder is an IoT-connected automatic pill dispenser built on the ESP32
+ *  microcontroller.  It fetches a patient's 7-dose schedule from a Flask REST
+ *  API, keeps its real-time clock synchronized with Philippine Standard Time
+ *  (UTC+8), and mechanically dispenses the correct medication rack at the
+ *  exact date and time configured by a caregiver through the Mediminder web
+ *  dashboard.
  *
- * Retry Logic: API calls retry twice with 5-second intervals on failure
- * Fallback: Uses cached settings and data if all retries fail
+ *  HARDWARE PINOUT (from schematic)
+ *  --------------------------------
+ *   1. 28BYJ-48 Stepper (ULN2003) : IN1=GPIO26  IN2=GPIO27  IN3=GPIO25  IN4=GPIO32
+ *   2. HC-SR04 Ultrasonic Sonar   : TRIG=GPIO5  ECHO=GPIO18  (voltage divider on ECHO)
+ *   3. 16×2 LCD (I²C, PCF8574)   : SDA=GPIO21  SCL=GPIO22  (addr 0x27, 5 V supply)
+ *   4. DS3231 RTC (I²C)           : SDA=GPIO21  SCL=GPIO22  (3.3 V supply, shared bus)
+ *   5. Passive Buzzer             : Signal=GPIO19
+ *   6. LED / Relay (lighting)     : IN=GPIO23   (disabled – buzzer alarm used instead)
+ *   7. Servo Motor (pill gate)    : Signal=GPIO13  (external 5 V power rail)
  *
- * Serial: 9600 Baud (8-N-1) | HELP command available
+ *  DISPENSER LOGIC FLOW
+ *  --------------------
+ *   Step 1  – Poll GET /api/dispense?device=esp32 every 10 seconds.
+ *             Syncs patient name, 7-rack schedule, rotation degrees,
+ *             current_rack pointer, and full PHT date/time for the software RTC.
+ *             Retries up to 2× with 5-second intervals on failure.
+ *             Falls back to cached data if all attempts fail (offline mode).
+ *
+ *   Step 2  – While idle, the LCD shows the live clock (HH:MM:SS) and date.
+ *             Every 10 s it briefly displays the patient name and the next
+ *             scheduled dispense time.
+ *
+ *   Step 3  – When the software RTC matches a rack's scheduled date & time,
+ *             the 28BYJ-48 stepper rotates clockwise by cfg_rotationDeg
+ *             (default 52°, synced from server) to advance the rack drum.
+ *
+ *   Step 4  – The servo motor opens the pill gate to 90°.
+ *
+ *   Step 5  – The gate is held open for 5 seconds, then closed back to 0°.
+ *
+ *   Step 6  – A 2 kHz high-pitch alarm buzzer plays for 10 seconds to alert
+ *             the patient.  A POST to /api/dispense-log is sent to mark the
+ *             rack as dispensed and advance the server's rack pointer.
+ *
+ *   Step 7  – The LCD shows "Medicine Ready!" with the patient's name and the
+ *             rack number just dispensed.
+ *
+ *   Step 8  – If the patient has not retrieved the medication within 60 s,
+ *             the 2 kHz alarm replays for 3 seconds as a reminder.  This
+ *             repeats every 60 s until the drawer is opened.
+ *
+ *   Step 9  – The HC-SR04 sonar continuously monitors the drawer distance.
+ *             When the patient opens the drawer (distance increases beyond
+ *             baseline + 20 cm), a two-tone confirmation chime plays.
+ *
+ *   Step 10 – A POST to /api/intake confirms medication retrieval and the
+ *             system returns to IDLE to await the next scheduled rack.
+ *
+ *  RETRY / FALLBACK
+ *  ----------------
+ *   API calls are retried up to 2 times with 5 s between attempts.
+ *   If all retries fail, the last successfully fetched configuration is used
+ *   (offline mode).  If no config has ever been fetched, hard-coded defaults
+ *   are used so the device is always operational.
+ *
+ *  SERIAL INTERFACE
+ *  ----------------
+ *   Baud: 9600 (8-N-1)
+ *   Commands: D / DISPENSE, POLL, S / STATUS, HELP
+ *   ANSI colour codes are used for easier terminal reading.
+ *
  * ============================================================================
  */
 
@@ -93,7 +141,7 @@ const char* API_POST_INTAKE_PATH   = "/api/intake";
 // ============================================================================
 // 3. TUNING CONSTANTS
 // ============================================================================
-#define POLL_INTERVAL_MS      15000UL  // GET poll every 15 s (temporary)
+#define POLL_INTERVAL_MS      10000UL  // GET poll every 10 s for fast config sync
 #define LCD_ALT_DISPLAY_MS    10000UL  // Alternate between clock & patient info every 10 s
 #define ROTATION_DEGREES      52.0f    // Stepper advance per dispense slot
 #define SERVO_OPEN_ANGLE      90       // Pill cover open angle
@@ -250,6 +298,7 @@ void tickRtcClock() {
   rtcSec++;
   if (rtcSec >= 60) {
     rtcSec = 0;
+    lastDispensedRackId = -1;  // Reset at each minute boundary so recycled rack IDs are re-armed
     rtcMin++;
     if (rtcMin >= 60) {
       rtcMin = 0;
@@ -773,8 +822,9 @@ void postDispenseLog(int rackId) {
     }
 
     // Parse next_rack and rack_count from response
+    // If next_rack is null/absent (all dispensed), wrap back to rack 1
     int nxt = extractJsonInt(resp, "next_rack", 0);
-    if (nxt >= 1 && nxt <= 7) cfg_currentRack = nxt;
+    cfg_currentRack = (nxt >= 1 && nxt <= 7) ? nxt : 1;
 
     int ri = extractJsonInt(resp, "rack_count", -1);
     if (ri >= 0) cfg_rackCount = ri;
@@ -1029,12 +1079,18 @@ void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
   delay(800);
 
-  // Banner
+  // Startup banner
   Serial.println(F("\n" ANSI_BOLD ANSI_CYAN
-    "╔═══════════════════════════════════════════════════════════╗\n"
-    "║         MEDIMINDER by SJNHS  –  Smart Dispenser          ║\n"
-    "║    Schematic Pinout | Flask REST IoT | 9600 Baud         ║\n"
-    "╚═══════════════════════════════════════════════════════════╝" ANSI_RESET "\n"));
+    "╔═══════════════════════════════════════════════════════════════╗\n"
+    "║          MEDIMINDER  –  Smart Automatic Pill Dispenser        ║\n"
+    "║          Developed by SJNHS  |  ESP32 IoT Firmware            ║\n"
+    "╠═══════════════════════════════════════════════════════════════╣\n"
+    "║  • 7-Rack sequential schedule via Flask REST API              ║\n"
+    "║  • PHT (UTC+8) real-time clock sync every 10 s                ║\n"
+    "║  • Stepper rotation: configurable degrees per rack             ║\n"
+    "║  • Sonar drawer-open detection → intake confirmation           ║\n"
+    "║  • Serial baud: 9600  |  Commands: HELP, S, D, POLL           ║\n"
+    "╚═══════════════════════════════════════════════════════════════╝" ANSI_RESET "\n"));
 
   // GPIO configuration
   logInfo("INIT", "Configuring GPIO...");
@@ -1118,7 +1174,7 @@ void loop() {
     }
   }
 
-  // --- STEP 1: Periodic GET poll every 15 s ---
+  // --- STEP 1: Periodic GET poll every 10 s ---
   if (now - lastPollMs >= POLL_INTERVAL_MS) {
     lastPollMs = now;
     if (state == STATE_IDLE) {      // Don't poll during dispensing
