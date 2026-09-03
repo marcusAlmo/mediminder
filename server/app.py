@@ -129,6 +129,7 @@ def init_default_racks() -> List[Dict[str, Any]]:
 # ==========================================
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DATA_FILE = os.path.join(DATA_DIR, "data.json")
+IOT_LAST_FETCH_FILE = os.path.join(DATA_DIR, "iot_last_fetch.txt")
 DISPENSE_LOG_FILE = os.path.join(DATA_DIR, "dispense_logs.txt")
 INTAKE_LOG_FILE = os.path.join(DATA_DIR, "intake_logs.txt")
 
@@ -204,6 +205,29 @@ def clear_log_file(log_file: str) -> None:
         app_logger.error(f"Could not clear {log_file}: {e}")
 
 
+def record_iot_fetch(timestamp: str) -> None:
+    """Persist the last successful ESP32 fetch timestamp to disk so it survives server restarts and multi-worker deployments."""
+    ensure_data_dir()
+    try:
+        with open(IOT_LAST_FETCH_FILE, "w", encoding="utf-8") as f:
+            f.write(timestamp)
+    except IOError as e:
+        app_logger.error(f"Could not write {IOT_LAST_FETCH_FILE}: {e}")
+
+
+def get_iot_last_fetch() -> str | None:
+    """Read the last successful ESP32 fetch timestamp from disk."""
+    if not os.path.exists(IOT_LAST_FETCH_FILE):
+        return None
+    try:
+        with open(IOT_LAST_FETCH_FILE, "r", encoding="utf-8") as f:
+            timestamp = f.read().strip()
+        return timestamp if timestamp else None
+    except IOError as e:
+        app_logger.error(f"Could not read {IOT_LAST_FETCH_FILE}: {e}")
+        return None
+
+
 def migrate_default_data(data: Dict[str, Any]) -> None:
     """Ensure loaded data has all required keys with sensible defaults."""
     cfg = data.get("config", {})
@@ -235,7 +259,7 @@ dispense_logs: List[Dict[str, Any]] = load_logs_from_file(DISPENSE_LOG_FILE)
 intake_logs: List[Dict[str, Any]] = load_logs_from_file(INTAKE_LOG_FILE)
 
 # In-memory IoT sync state (last time the ESP32 fetched config)
-iot_last_fetch_at: str | None = None
+iot_last_fetch_at: str | None = get_iot_last_fetch()
 
 # Persist default data on first run
 if not os.path.exists(DATA_FILE):
@@ -339,6 +363,7 @@ def get_dispense_schedule():
     if request.args.get("device") == "esp32":
         global iot_last_fetch_at
         iot_last_fetch_at = rtc_time["iso"]
+        record_iot_fetch(iot_last_fetch_at)
         app_logger.info(f"[{get_request_id()}] [IOT FETCH] ESP32 polled schedule at {iot_last_fetch_at}")
 
     # Guarantee 7 storage racks by default
@@ -940,6 +965,10 @@ def health_check():
 @app.route("/api/iot-sync-status", methods=["GET"])
 def iot_sync_status():
     """Return whether the ESP32 has fetched the latest configuration and is still online."""
+    # Load from disk to handle multi-worker deployments and server restarts
+    global iot_last_fetch_at
+    iot_last_fetch_at = get_iot_last_fetch() or iot_last_fetch_at
+
     last_updated_at = dispenser_config.get("last_updated_at", "")
     synced = (
         iot_last_fetch_at is not None and
