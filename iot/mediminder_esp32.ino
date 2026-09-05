@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  *  Mediminder – Smart Automatic Medicine Dispenser
- *  Developed by SJNHS (San Jose National High School)
+ *  Developed by SJNHS (San Jacinto National High School)
  * ============================================================================
  *
  *  PURPOSE
@@ -148,8 +148,11 @@ const char* API_POST_INTAKE_PATH   = "/api/intake";
 #define SERVO_HOLD_MS         5000UL   // Hold cover open for 5 s
 #define BUZZER_ALERT_MS       10000UL  // Buzzer on for 10 s after dispense
 #define BUZZER_HIGH_FREQ      1000     // 1 kHz high-frequency alert
-#define REPEAT_ALARM_INTERVAL 60000UL  // Re-alarm every 60 s if med not taken
-#define SONAR_IDLE_THRESHOLD  20.0f    // cm – drawer considered "open" when dist > threshold
+#define REPEAT_ALARM_INTERVAL      60000UL  // Re-alarm every 60 s if med not taken
+#define MED_READY_TIMEOUT_MS      600000UL  // Auto-abandon MED_READY after 10 min (patient absent)
+#define SONAR_IDLE_THRESHOLD       20.0f  // cm – drawer considered "open" when dist > threshold
+#define SONAR_INTAKE_THRESHOLD_CM  15.0f  // cm – mark rack as taken when opened
+#define SONAR_RETURN_OK_CM         14.0f  // cm – drawer returned, stop reminder
 #define RACK_WARNING_DEFAULT  3        // Default low-rack warning threshold
 
 // ============================================================================
@@ -214,6 +217,8 @@ int  activeDispenseRack   = 1;     // Rack currently being dispensed
 bool lcdShowingAlt        = false; // Clock vs patient-info alternation flag
 bool isWifiConnected      = false;
 bool rackWarningTriggered = false;
+bool intakeReported       = false;   // True once the opened drawer has been reported to the server
+unsigned long lastReturnBeepMs = 0; // Last time the "return drawer" beep sounded
 
 // Baseline sonar distance captured when MED_READY begins (for drawer-open detection)
 float sonarBaselineDistCm = -1.0f;
@@ -971,6 +976,8 @@ void runDispenseCycle(int rackId) {
   lastDispensedRackId = activeDispenseRack;
   dispenseReadyMs     = millis();
   lastRepeatAlarmMs   = millis();
+  intakeReported      = false;
+  lastReturnBeepMs    = 0;
 
   state = STATE_MED_READY;
   logInfo("STATE", "Entering MED_READY – External LED ON. Waiting for patient to open drawer.");
@@ -983,12 +990,23 @@ void runDispenseCycle(int rackId) {
 void handleMedReadyState() {
   unsigned long now = millis();
 
+  // --- Timeout: abandon MED_READY if patient never shows after 10 minutes ---
+  if (now - dispenseReadyMs >= MED_READY_TIMEOUT_MS) {
+    logWarn("STATE", "MED_READY timed out – no patient response. Returning to IDLE.");
+    lcdPrint("Timeout!        ", "Med Not Taken   ");
+    delay(2000);
+    state = STATE_IDLE;
+    intakeReported = false;
+    sonarBaselineDistCm = -1.0f;
+    return;
+  }
+
   // --- STEP 8: Repeat alarm every 60 s if med still not taken ---
-  if (now - lastRepeatAlarmMs >= REPEAT_ALARM_INTERVAL) {
+  if (!intakeReported && (now - lastRepeatAlarmMs >= REPEAT_ALARM_INTERVAL)) {
     lastRepeatAlarmMs = now;
     logWarn("ALARM", "Medicine not yet taken – repeating reminder with high-pitch alarm!");
     lcdPrint("! REMINDER !    ", "Take Your Meds! ");
-    
+
     // Play high-pitch alarm with micro pauses for 3 seconds
     alarmBuzzer(3000, 2000);  // 2 kHz high-pitch alarm for 3 seconds
 
@@ -1001,36 +1019,54 @@ void handleMedReadyState() {
   // --- STEP 9 & 10: Detect drawer opening via sonar ---
   float dist = sonarFiltered();
 
-  // Drawer is considered "opened" when distance increases significantly
-  // from baseline (i.e., patient's hand removes the cup, distance grows)
-  bool drawerOpened = false;
-  if (dist > 0 && sonarBaselineDistCm > 0) {
-    drawerOpened = (dist > sonarBaselineDistCm + SONAR_IDLE_THRESHOLD);
-  } else if (dist < 0) {
-    // Timeout / no echo also treated as drawer opened (cup removed, nothing to reflect)
-    drawerOpened = true;
-  }
-
-  if (drawerOpened) {
+  // Drawer open: sonarFiltered() returns -1 when all 3 pings timeout (cup removed / nothing to
+  // reflect), OR when the measured distance exceeds the intake threshold.
+  if (!intakeReported && (dist < 0 || dist >= SONAR_INTAKE_THRESHOLD_CM)) {
     printTimestamp();
     serialPrintf("  " ANSI_BOLD ANSI_GREEN "[DRAWER-OPEN]" ANSI_RESET
-                 " Distance: %.1f cm (baseline was %.1f cm). Intake confirmed!\n",
-                 dist, sonarBaselineDistCm);
+                 " Distance: %.1f cm. Intake confirmed!\n", dist);
 
     // Brief confirmation chime (two-tone)
     buzzTone(BUZZER_HIGH_FREQ, 100); delay(60);
     buzzTone(BUZZER_HIGH_FREQ * 2, 150);
 
-    // LCD thank you
-    lcdPrint("Thank You!      ", "Stay Healthy :) ");
-    delay(2000);
-
-    // --- STEP 10: POST intake log ---
+    // --- STEP 10: POST intake log (server marks rack as taken) ---
     postIntakeLog(activeDispenseRack, dist);
 
-    // Reset for next dispense slot
-    state = STATE_IDLE;
-    logInfo("STATE", "Intake confirmed. Returning to IDLE monitoring.");
+    intakeReported = true;
+  }
+
+  // Continually remind the patient to return the drawer until it is physically back in place.
+  // "Still open" = no echo (dist < 0) OR distance still large (>= SONAR_RETURN_OK_CM).
+  // "Closed"     = valid short reading: dist > 0 AND dist < SONAR_RETURN_OK_CM.
+  if (intakeReported) {
+    bool drawerStillOpen = (dist < 0 || dist >= SONAR_RETURN_OK_CM);
+    if (drawerStillOpen) {
+      lcdPrint("Return Drawer!  ", "Close it now    ");
+
+      // Non-blocking intermittent beep until the drawer is returned
+      if (now - lastReturnBeepMs >= 500) {
+        lastReturnBeepMs = now;
+        buzzTone(BUZZER_HIGH_FREQ, 100);
+      }
+    } else {
+      // dist > 0 && dist < SONAR_RETURN_OK_CM → drawer physically back in place
+      printTimestamp();
+      serialPrintf("  " ANSI_BOLD ANSI_GREEN "[DRAWER-CLOSED]" ANSI_RESET
+                   " Distance: %.1f cm. Returning to IDLE.\n", dist);
+
+      // Brief "all done" chime
+      buzzTone(BUZZER_HIGH_FREQ * 2, 150);
+
+      lcdPrint("Thank You!      ", "Stay Healthy :) ");
+      delay(1500);
+
+      // Reset for next dispense slot
+      state = STATE_IDLE;
+      intakeReported = false;
+      sonarBaselineDistCm = -1.0f;
+      logInfo("STATE", "Drawer returned. Returning to IDLE.");
+    }
   }
 }
 
@@ -1177,7 +1213,7 @@ void loop() {
   // --- STEP 1: Periodic GET poll every 10 s ---
   if (now - lastPollMs >= POLL_INTERVAL_MS) {
     lastPollMs = now;
-    if (state == STATE_IDLE) {      // Don't poll during dispensing
+    if (state == STATE_IDLE) {      // Only poll while idle; polling during MED_READY lets the server mark the next rack as skipped
       pollScheduleFromApi();
     }
   }

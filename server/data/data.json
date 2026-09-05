@@ -3,56 +3,56 @@
     "racks": [
       {
         "rack_id": 1,
-        "datetime": "2026-09-03 08:00",
-        "iso_datetime": "2026-09-03T08:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 1",
         "drugs": []
       },
       {
         "rack_id": 2,
-        "datetime": "2026-09-03 12:00",
-        "iso_datetime": "2026-09-03T12:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 2",
         "drugs": []
       },
       {
         "rack_id": 3,
-        "datetime": "2026-09-03 16:00",
-        "iso_datetime": "2026-09-03T16:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 3",
         "drugs": []
       },
       {
         "rack_id": 4,
-        "datetime": "2026-09-03 18:00",
-        "iso_datetime": "2026-09-03T18:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 4",
         "drugs": []
       },
       {
         "rack_id": 5,
-        "datetime": "2026-09-04 08:00",
-        "iso_datetime": "2026-09-04T08:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 5",
         "drugs": []
       },
       {
         "rack_id": 6,
-        "datetime": "2026-09-04 12:00",
-        "iso_datetime": "2026-09-04T12:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 6",
         "drugs": []
       },
       {
         "rack_id": 7,
-        "datetime": "2026-09-04 18:00",
-        "iso_datetime": "2026-09-04T18:00:00+08:00",
+        "datetime": "",
+        "iso_datetime": "",
         "status": "pending",
         "notes": "Rack 7",
         "drugs": []
@@ -63,17 +63,10 @@
     "current_rack": 1,
     "rack_count": 0,
     "rack_warning_threshold": 2,
-    "dispense_time": [
-      "08:00",
-      "12:00",
-      "16:00",
-      "18:00",
-      "08:00",
-      "12:00",
-      "18:00"
-    ],
-    "last_updated_at": "2026-09-03T16:57:09.748936+08:00",
+    "dispense_time": [],
+    "last_updated_at": "2026-09-05T12:24:44.491840+08:00",
     "patient_age": "",
-    "patient_sickness": ""
+    "patient_sickness": "",
+    "schedule_cleared": true
   }
 }

@@ -231,9 +231,10 @@ def get_iot_last_fetch() -> str | None:
 def migrate_default_data(data: Dict[str, Any]) -> None:
     """Ensure loaded data has all required keys with sensible defaults."""
     cfg = data.get("config", {})
-    if not cfg.get("racks"):
+    cfg.setdefault("schedule_cleared", False)
+    if not cfg.get("racks") and not cfg.get("schedule_cleared"):
         cfg["racks"] = init_default_racks()
-    else:
+    elif cfg.get("racks"):
         # Backfill drugs array for racks that predate the drugs feature
         for rack in cfg["racks"]:
             if "drugs" not in rack:
@@ -366,9 +367,9 @@ def get_dispense_schedule():
         record_iot_fetch(iot_last_fetch_at)
         app_logger.info(f"[{get_request_id()}] [IOT FETCH] ESP32 polled schedule at {iot_last_fetch_at}")
 
-    # Guarantee 7 storage racks by default
+    # Guarantee 7 storage racks by default, but respect an explicit clear
     racks = dispenser_config.get("racks", [])
-    if not racks or len(racks) < 7:
+    if (not racks or len(racks) < 7) and not dispenser_config.get("schedule_cleared"):
         dispenser_config["racks"] = init_default_racks()
         racks = dispenser_config["racks"]
 
@@ -386,28 +387,26 @@ def get_dispense_schedule():
     now = datetime.now(PHT)
     pending_racks_sorted = sorted(pending_racks, key=lambda r: r["rack_id"])
     
-    # Mark any pending racks whose datetime has passed as "skipped"
-    for r in racks:
-        if r.get("status") == "pending" and "datetime" in r:
-            rack_time = datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT)
-            if rack_time < now:
-                r["status"] = "skipped"
-    
-    # Recompute pending_racks after marking skipped ones
+    # NOTE: We intentionally do NOT mark past-due racks as "skipped" here.
+    # Mutating rack status in a GET handler causes the 2nd dispense to fail:
+    # if the device is in MED_READY and the next rack's time passes, a poll
+    # would mark it skipped and advance current_rack, so the device never
+    # dispenses it.  Racks are only marked skipped by POST /api/dispense
+    # (when a later rack is explicitly dispensed, implying earlier ones were missed).
     pending_racks = [r for r in racks if r.get("status") == "pending"]
     pending_racks_sorted = sorted(pending_racks, key=lambda r: r["rack_id"])
     
     # First priority: Find next pending rack with future datetime
     next_rack_obj = next(
         (r for r in pending_racks_sorted
-         if r.get("status") == "pending" and datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT) >= now),
+         if r.get("status") == "pending" and r.get("datetime") and datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT) >= now),
         None
     )
     
     # Fallback: If all pending racks are in the past (offline scenario)
     if not next_rack_obj and pending_racks_sorted:
         # Find the most recently passed rack (closest to now)
-        past_racks = [r for r in pending_racks_sorted if r.get("status") == "pending"]
+        past_racks = [r for r in pending_racks_sorted if r.get("status") == "pending" and r.get("datetime")]
         if past_racks:
             next_rack_obj = max(past_racks, key=lambda r: datetime.strptime(r["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=PHT))
             app_logger.warning(f"[{get_request_id()}] [OFFLINE SCENARIO] All pending racks are in the past. Using most recent: Rack #{next_rack_obj['rack_id']} (was due at {next_rack_obj['datetime']})")
@@ -612,12 +611,40 @@ def submit_intake():
     # Sanitize inputs
     patient_name = sanitize_string(data.get("patient_name", dispenser_config["patient_name"]), 100)
     slot = data.get("slot") or data.get("rack_id") or dispenser_config.get("current_rack", 1)
-    
+
     # Validate rack ID
     if not validate_rack_id(slot):
         slot = dispenser_config.get("current_rack", 1)
-    
+
+    try:
+        slot = int(slot)
+    except (ValueError, TypeError):
+        slot = dispenser_config.get("current_rack", 1)
+
     notes = sanitize_string(data.get("notes", "Patient retrieved medication from dispenser tray"), 200)
+
+    # Mark the corresponding rack as taken and record when it was taken
+    racks = dispenser_config.get("racks", [])
+    rack_drugs = []
+    for r in racks:
+        if r["rack_id"] == slot:
+            r["status"] = "taken"
+            r["taken_at"] = timestamp
+            rack_drugs = r.get("drugs", [])
+            break
+
+    # Reflect the intake timestamp on the matching dispense log
+    for log in reversed(dispense_logs):
+        if log.get("rack_id") == slot:
+            log["taken_at"] = timestamp
+            log["status"] = "taken"
+            break
+
+    rack_count = len([r for r in racks if r.get("status") in ["dispensed", "taken"]])
+    dispenser_config["rack_count"] = rack_count
+    threshold = dispenser_config.get("rack_warning_threshold", 3)
+    rack_warning = rack_count <= threshold
+    dispenser_config["last_updated_at"] = datetime.now(PHT).isoformat()
 
     intake_entry = {
         "id": len(intake_logs) + 1,
@@ -627,6 +654,7 @@ def submit_intake():
         "rack_id": slot,
         "slot": slot,
         "notes": notes,
+        "drugs": rack_drugs,
         "status": "intake_confirmed",
     }
 
@@ -644,8 +672,11 @@ def submit_intake():
 
     return jsonify({
         "status": "success",
-        "message": "Patient intake event recorded successfully.",
+        "message": f"Rack #{slot} marked as taken and intake event recorded successfully.",
+        "taken_rack": slot,
         "log": intake_entry,
+        "rack_count": rack_count,
+        "rack_warning": rack_warning,
         "total_intake_logs": len(intake_logs)
     }), 201
 
@@ -825,6 +856,7 @@ def update_dispense_schedule():
                 dispenser_config["current_rack"] = first_pending
         
         dispenser_config["racks"] = updated_racks
+        dispenser_config["schedule_cleared"] = not updated_racks
         dispenser_config["rack_count"] = len([r for r in updated_racks if r["status"] in ["dispensed", "taken"]])
         dispenser_config["dispense_time"] = [r["datetime"].split(" ")[-1] for r in updated_racks if "datetime" in r]
 
@@ -929,18 +961,29 @@ def clear_dispense_logs():
 
 @app.route("/api/schedule/reset", methods=["POST"])
 def reset_schedule():
-    """Reset the 7-rack schedule and drugs to defaults."""
-    default_racks = init_default_racks()
-    dispenser_config["racks"] = default_racks
+    """Clear the 7-rack schedule and drugs, leaving blank placeholders for each rack."""
+    blank_racks = [
+        {
+            "rack_id": i,
+            "datetime": "",
+            "iso_datetime": "",
+            "status": "pending",
+            "notes": f"Rack {i}",
+            "drugs": []
+        }
+        for i in range(1, 8)
+    ]
+    dispenser_config["racks"] = blank_racks
+    dispenser_config["schedule_cleared"] = True
     dispenser_config["current_rack"] = 1
     dispenser_config["rack_count"] = 0
-    dispenser_config["dispense_time"] = [r["datetime"].split(" ")[-1] for r in default_racks if "datetime" in r]
+    dispenser_config["dispense_time"] = []
     dispenser_config["last_updated_at"] = datetime.now(PHT).isoformat()
     save_data()
     return jsonify({
         "status": "success",
-        "message": "Schedule reset to defaults successfully.",
-        "racks": default_racks
+        "message": "Schedule cleared. Configure each blank rack below.",
+        "racks": blank_racks
     }), 200
 
 
