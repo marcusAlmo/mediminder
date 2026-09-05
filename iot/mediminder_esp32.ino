@@ -379,22 +379,16 @@ void initDefault7Racks() {
 }
 
 // Returns rackId (1..7) if current date and time matches the sequential scheduled rack
+// ENFORCES STRICT SEQUENCE: only the current_rack pointer can trigger a dispense.
+// This prevents out-of-order dispensing when the server and device drift.
 int checkAlarm() {
+  if (cfg_currentRack < 1 || cfg_currentRack > 7) return -1;
+  
+  RackSlot& slot = cfg_racks[cfg_currentRack];
   String currentYMDHM = getYMDHM();
-
-  // Check the active sequential rack first
-  if (cfg_currentRack >= 1 && cfg_currentRack <= 7) {
-    RackSlot& slot = cfg_racks[cfg_currentRack];
-    if (slot.status == "pending" && slot.dt == currentYMDHM && lastDispensedRackId != slot.rackId) {
-      return slot.rackId;
-    }
-  }
-
-  // Fallback: check any pending rack matching exact current minute
-  for (int i = 1; i <= 7; i++) {
-    if (cfg_racks[i].status == "pending" && cfg_racks[i].dt == currentYMDHM && lastDispensedRackId != cfg_racks[i].rackId) {
-      return cfg_racks[i].rackId;
-    }
+  
+  if (slot.status == "pending" && slot.dt == currentYMDHM && lastDispensedRackId != slot.rackId) {
+    return slot.rackId;
   }
 
   return -1;
@@ -479,12 +473,14 @@ float sonarReadCm() {
 }
 
 // 3-sample median for stability
+// HC-SR04 requires ≥60ms between measurements for proper echo decay and sensor reset.
+// Using only 600µs caused all pings to timeout due to interference.
 float sonarFiltered() {
   float r[3]; int n = 0;
   for (int i = 0; i < 3; i++) {
     float d = sonarReadCm();
     if (d > 0) r[n++] = d;
-    delayMicroseconds(600);
+    delay(60);  // HC-SR04 datasheet: minimum 60ms between pings
   }
   if (n == 0) return -1.0f;
   if (n == 1) return r[0];
@@ -1019,9 +1015,10 @@ void handleMedReadyState() {
   // --- STEP 9 & 10: Detect drawer opening via sonar ---
   float dist = sonarFiltered();
 
-  // Drawer open: sonarFiltered() returns -1 when all 3 pings timeout (cup removed / nothing to
-  // reflect), OR when the measured distance exceeds the intake threshold.
-  if (!intakeReported && (dist < 0 || dist >= SONAR_INTAKE_THRESHOLD_CM)) {
+  // Drawer open: only trigger on a VALID positive distance reading that exceeds the threshold.
+  // Ignore sensor errors (dist < 0) to prevent false positives from sensor timeouts.
+  // A valid reading means the sonar successfully measured the drawer distance.
+  if (!intakeReported && dist > 0 && dist >= SONAR_INTAKE_THRESHOLD_CM) {
     printTimestamp();
     serialPrintf("  " ANSI_BOLD ANSI_GREEN "[DRAWER-OPEN]" ANSI_RESET
                  " Distance: %.1f cm. Intake confirmed!\n", dist);
@@ -1037,10 +1034,10 @@ void handleMedReadyState() {
   }
 
   // Continually remind the patient to return the drawer until it is physically back in place.
-  // "Still open" = no echo (dist < 0) OR distance still large (>= SONAR_RETURN_OK_CM).
+  // "Still open" = distance still large (>= SONAR_RETURN_OK_CM) or sensor error (dist < 0).
   // "Closed"     = valid short reading: dist > 0 AND dist < SONAR_RETURN_OK_CM.
   if (intakeReported) {
-    bool drawerStillOpen = (dist < 0 || dist >= SONAR_RETURN_OK_CM);
+    bool drawerStillOpen = (dist < 0 || (dist > 0 && dist >= SONAR_RETURN_OK_CM));
     if (drawerStillOpen) {
       lcdPrint("Return Drawer!  ", "Close it now    ");
 
